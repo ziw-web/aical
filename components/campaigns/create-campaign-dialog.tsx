@@ -1,0 +1,306 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+
+import { Button } from "@/components/ui/button";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "sonner";
+import axios from "axios";
+import { Plus, Search } from "lucide-react";
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
+
+interface Agent {
+    _id: string;
+    name: string;
+}
+
+interface Lead {
+    _id: string;
+    name: string;
+    phone: string;
+    tags: string[];
+}
+
+interface CreateCampaignDialogProps {
+    onSuccess?: () => void;
+}
+
+export function CreateCampaignDialog({ onSuccess }: CreateCampaignDialogProps) {
+    const [open, setOpen] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [agents, setAgents] = useState<Agent[]>([]);
+    const [leads, setLeads] = useState<Lead[]>([]);
+    const [searchQuery, setSearchQuery] = useState("");
+    const router = useRouter();
+    const [formData, setFormData] = useState({
+        name: "",
+        agentId: "",
+        selectedLeads: [] as string[],
+    });
+
+    useEffect(() => {
+        if (open) {
+            fetchInitialData();
+        }
+    }, [open]);
+
+    const fetchInitialData = async () => {
+        try {
+            const token = localStorage.getItem("token");
+            const [agentsRes, leadsRes] = await Promise.all([
+                axios.get(`${API_BASE_URL}/agents`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                }),
+                axios.get(`${API_BASE_URL}/leads`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+            ]);
+
+            setAgents(agentsRes.data.data.agents);
+            setLeads(leadsRes.data.data.leads);
+        } catch (err: any) {
+            toast.error("Failed to load initial data");
+        }
+    };
+
+    const handleLeadToggle = (leadId: string) => {
+        setFormData((prev) => ({
+            ...prev,
+            selectedLeads: prev.selectedLeads.includes(leadId)
+                ? prev.selectedLeads.filter((id) => id !== leadId)
+                : [...prev.selectedLeads, leadId],
+        }));
+    };
+
+    const handleTagToggle = (tag: string, checked: boolean) => {
+        const leadsWithTag = leads.filter(lead => lead.tags?.includes(tag)).map(lead => lead._id);
+
+        setFormData((prev) => {
+            let newSelected = [...prev.selectedLeads];
+            if (checked) {
+                // Add all leads with tag that aren't already selected
+                leadsWithTag.forEach(id => {
+                    if (!newSelected.includes(id)) newSelected.push(id);
+                });
+            } else {
+                // Remove all leads that have this tag
+                newSelected = newSelected.filter(id => !leadsWithTag.includes(id));
+            }
+            return { ...prev, selectedLeads: newSelected };
+        });
+    };
+
+    const handleSelectAll = (checked: boolean) => {
+        if (checked) {
+            setFormData(prev => ({
+                ...prev,
+                selectedLeads: filteredLeads.map(l => l._id)
+            }));
+        } else {
+            setFormData(prev => ({
+                ...prev,
+                selectedLeads: []
+            }));
+        }
+    };
+
+    const allTags = Array.from(new Set(leads.flatMap(lead => lead.tags || []))).sort();
+
+    const filteredLeads = leads.filter(lead =>
+        lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        lead.phone.includes(searchQuery)
+    );
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (formData.selectedLeads.length === 0) {
+            toast.error("Please select at least one lead");
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const token = localStorage.getItem("token");
+            const response = await axios.post(`${API_BASE_URL}/campaigns`, {
+                name: formData.name,
+                agentId: formData.agentId,
+                leadIds: formData.selectedLeads
+            }, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            toast.success("Campaign created successfully!");
+            setOpen(false);
+            setFormData({ name: "", agentId: "", selectedLeads: [] });
+            onSuccess?.();
+
+            // Redirect to the new campaign details page
+            if (response.data?.data?.campaign?._id) {
+                router.push(`/campaigns/${response.data.data.campaign._id}`);
+            }
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || "Failed to create campaign");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button>
+                    <Plus className="h-4 w-4" />
+                    Create Campaign
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                    <DialogTitle>Create New Campaign</DialogTitle>
+                    <DialogDescription>
+                        Set up a new calling campaign with an AI agent and leads.
+                    </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSubmit}>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="campaign-name">Campaign Name</Label>
+                            <Input
+                                id="campaign-name"
+                                value={formData.name}
+                                onChange={(e) =>
+                                    setFormData({ ...formData, name: e.target.value })
+                                }
+                                placeholder="Q1 Sales Campaign"
+                                required
+                                disabled={loading}
+                            />
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="agent">Select Agent</Label>
+                            <Select
+                                value={formData.agentId}
+                                onValueChange={(value) =>
+                                    setFormData({ ...formData, agentId: value })
+                                }
+                                required
+                                disabled={loading}
+                            >
+                                <SelectTrigger id="agent">
+                                    <SelectValue placeholder="Choose an agent" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {agents.map((agent) => (
+                                        <SelectItem key={agent._id} value={agent._id}>
+                                            {agent.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="grid gap-2">
+                            <div className="flex items-center justify-between mb-1">
+                                <Label>Select Leads ({formData.selectedLeads.length} selected)</Label>
+                                <div className="flex items-center gap-4">
+                                    <Select onValueChange={(tag) => handleTagToggle(tag, true)}>
+                                        <SelectTrigger className="h-7 w-fit text-xs px-2 border-dashed">
+                                            <SelectValue placeholder="Add by Tag" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {allTags.map(tag => (
+                                                <SelectItem key={tag} value={tag} className="text-xs">
+                                                    {tag}
+                                                </SelectItem>
+                                            ))}
+                                            {allTags.length === 0 && (
+                                                <div className="px-2 py-1.5 text-xs text-muted-foreground">No tags available</div>
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+
+                                    <div className="flex items-center gap-2">
+                                        <Checkbox
+                                            id="select-all"
+                                            checked={formData.selectedLeads.length === filteredLeads.length && filteredLeads.length > 0}
+                                            onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                                        />
+                                        <label htmlFor="select-all" className="text-xs text-muted-foreground cursor-pointer">Select All</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="relative mb-2">
+                                <Search className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+                                <Input
+                                    placeholder="Search leads..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="h-8 pl-8 text-xs"
+                                />
+                            </div>
+
+                            <ScrollArea className="h-[200px] rounded-md border p-4">
+                                <div className="space-y-3">
+                                    {filteredLeads.map((lead) => (
+                                        <div key={lead._id} className="flex items-center space-x-2">
+                                            <Checkbox
+                                                id={`lead-${lead._id}`}
+                                                checked={formData.selectedLeads.includes(lead._id)}
+                                                onCheckedChange={() => handleLeadToggle(lead._id)}
+                                                disabled={loading}
+                                            />
+                                            <label
+                                                htmlFor={`lead-${lead._id}`}
+                                                className="flex-1 cursor-pointer text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                            >
+                                                {lead.name}
+                                                <span className="ml-2 text-xs font-normal text-muted-foreground">
+                                                    {lead.phone}
+                                                </span>
+                                            </label>
+                                        </div>
+                                    ))}
+                                    {filteredLeads.length === 0 && (
+                                        <p className="text-center text-xs text-muted-foreground py-4">
+                                            No leads found
+                                        </p>
+                                    )}
+                                </div>
+                            </ScrollArea>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={loading}>
+                            Cancel
+                        </Button>
+                        <Button type="submit" disabled={loading}>
+                            {loading ? "Creating..." : "Create Campaign"}
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+    );
+}
