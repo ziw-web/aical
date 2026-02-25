@@ -322,7 +322,9 @@ export default function LandingPage() {
             <footer className="bg-white border-t border-slate-100 py-16 px-6">
                 <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-12">
                     <div className="col-span-2 space-y-6">
-                        <Logo width={180} height={45} />
+                        <div style={{ fontSize: "27px" }}>
+                ai<span style={{ color: "#8078f0e6" }}>cal</span>
+            </div>
                         <p className="text-slate-500 max-w-sm">
                             Revolutionizing business communications with intelligent, automated calling solutions that scale with your growth.
                         </p>
@@ -352,7 +354,7 @@ export default function LandingPage() {
                     </div>
                 </div>
                 <div className="max-w-7xl mx-auto border-t border-slate-100 mt-16 pt-8 text-center text-slate-400 text-sm font-medium">
-                    © {new Date().getFullYear()} IntelliCall AI. All rights reserved.
+                    © {new Date().getFullYear()} aical. All rights reserved.
                 </div>
             </footer>
         </div>

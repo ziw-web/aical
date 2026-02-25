@@ -12,7 +12,7 @@ const sora = Sora({
 });
 
 export const metadata: Metadata = {
-  title: "IntelliCall AI - Dashboard",
+  title: "aical - Dashboard",
   description: "AI-powered outbound calling platform",
 };
 
