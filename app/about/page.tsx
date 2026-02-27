@@ -55,7 +55,7 @@ export default function AboutPage() {
                         <h2 className="text-3xl font-bold text-center">Why We Started</h2>
                         <div className="prose prose-slate max-w-none text-slate-600 leading-relaxed space-y-4">
                             <p>
-                                Founded in 2024, IntelliCall AI emerged from a simple observation: traditional outbound calling was broken. Sales teams were fatigued, conversion rates were dropping, and customers were tired of robotic interactions.
+                                Founded in 2024, aical emerged from a simple observation: traditional outbound calling was broken. Sales teams were fatigued, conversion rates were dropping, and customers were tired of robotic interactions.
                             </p>
                             <p>
                                 We saw an opportunity to bridge the gap using Large Language Models and advanced neural voices. By creating AI agents that can truly listen and adapt, we're giving businesses back their most valuable asset: time.
@@ -77,7 +77,7 @@ export default function AboutPage() {
             </main>
 
             <footer className="mt-auto border-t border-slate-100 py-8 px-6 text-center text-slate-400 text-sm">
-                © {new Date().getFullYear()} IntelliCall AI. All rights reserved.
+                © {new Date().getFullYear()} aical AI. All rights reserved.
             </footer>
         </div>
     );

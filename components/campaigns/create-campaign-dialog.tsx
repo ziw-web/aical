@@ -26,7 +26,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import axios from "axios";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, CalendarClock } from "lucide-react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
@@ -57,6 +57,8 @@ export function CreateCampaignDialog({ onSuccess }: CreateCampaignDialogProps) {
         name: "",
         agentId: "",
         selectedLeads: [] as string[],
+        scheduleEnabled: false,
+        scheduledAt: "", // datetime-local value: YYYY-MM-DDTHH:mm
     });
 
     useEffect(() => {
@@ -142,17 +144,21 @@ export function CreateCampaignDialog({ onSuccess }: CreateCampaignDialogProps) {
         setLoading(true);
         try {
             const token = localStorage.getItem("token");
-            const response = await axios.post(`${API_BASE_URL}/campaigns`, {
+            const payload: { name: string; agentId: string; leadIds: string[]; scheduledAt?: string } = {
                 name: formData.name,
                 agentId: formData.agentId,
                 leadIds: formData.selectedLeads
-            }, {
+            };
+            if (formData.scheduleEnabled && formData.scheduledAt) {
+                payload.scheduledAt = new Date(formData.scheduledAt).toISOString();
+            }
+            const response = await axios.post(`${API_BASE_URL}/campaigns`, payload, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
-            toast.success("Campaign created successfully!");
+            toast.success(payload.scheduledAt ? "Campaign scheduled successfully!" : "Campaign created successfully!");
             setOpen(false);
-            setFormData({ name: "", agentId: "", selectedLeads: [] });
+            setFormData({ name: "", agentId: "", selectedLeads: [], scheduleEnabled: false, scheduledAt: "" });
             onSuccess?.();
 
             // Redirect to the new campaign details page
@@ -218,6 +224,37 @@ export function CreateCampaignDialog({ onSuccess }: CreateCampaignDialogProps) {
                                     ))}
                                 </SelectContent>
                             </Select>
+                        </div>
+
+                        <div className="grid gap-2">
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    id="schedule-campaign"
+                                    checked={formData.scheduleEnabled}
+                                    onChange={(e) => setFormData({ ...formData, scheduleEnabled: e.target.checked })}
+                                    disabled={loading}
+                                    className="h-4 w-4 rounded border-input"
+                                />
+                                <Label htmlFor="schedule-campaign" className="flex items-center gap-1.5 cursor-pointer">
+                                    <CalendarClock className="h-4 w-4 text-muted-foreground" />
+                                    Schedule for later
+                                </Label>
+                            </div>
+                            {formData.scheduleEnabled && (
+                                <div className="grid gap-1.5">
+                                    <Label htmlFor="scheduled-at">Date & time</Label>
+                                    <input
+                                        id="scheduled-at"
+                                        type="datetime-local"
+                                        value={formData.scheduledAt}
+                                        onChange={(e) => setFormData({ ...formData, scheduledAt: e.target.value })}
+                                        disabled={loading}
+                                        min={new Date().toISOString().slice(0, 16)}
+                                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                    />
+                                </div>
+                            )}
                         </div>
 
                         <div className="grid gap-2">

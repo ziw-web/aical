@@ -13,7 +13,9 @@ import {
     Settings,
     ShieldCheck,
     Hash,
+    Server,
     X,
+    HeadphonesIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -37,6 +39,11 @@ const mainMenuItems = [
         icon: Hash,
     },
     {
+        title: "SIP Trunks",
+        href: "/sip-trunks",
+        icon: Server,
+    },
+    {
         title: "AI Agents",
         href: "/agents",
         icon: Bot,
@@ -50,6 +57,11 @@ const mainMenuItems = [
         title: "Call Logs",
         href: "/call-logs",
         icon: Phone,
+    },
+    {
+        title: "Support",
+        href: "/support",
+        icon: HeadphonesIcon,
     },
 ];
 
@@ -72,9 +84,13 @@ interface SidebarProps {
     onClose?: () => void;
 }
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.aical.in/api";
+
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
     const pathname = usePathname();
     const [user, setUser] = useState<any>(null);
+    const [pendingSupportCount, setPendingSupportCount] = useState(0);
+    const [myPendingSupportCount, setMyPendingSupportCount] = useState(0);
 
     useEffect(() => {
         try {
@@ -86,6 +102,45 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             console.error("Error parsing user:", error);
         }
     }, [pathname]);
+
+    useEffect(() => {
+        const isAdminUser = user?.role === "admin" || user?.isSuperAdmin;
+        if (!isAdminUser) {
+            setPendingSupportCount(0);
+            return;
+        }
+        const token = localStorage.getItem("token");
+        if (!token) return;
+        fetch(`${API_BASE_URL}/support/tickets/pending-count`, {
+            headers: { Authorization: `Bearer ${token}` },
+        })
+            .then((res) => res.json())
+            .then((data) => {
+                if (data?.status === "success" && typeof data?.data?.count === "number") {
+                    setPendingSupportCount(data.data.count);
+                }
+            })
+            .catch(() => setPendingSupportCount(0));
+    }, [user?.role, user?.isSuperAdmin, pathname]);
+
+    useEffect(() => {
+        if (!user) {
+            setMyPendingSupportCount(0);
+            return;
+        }
+        const token = localStorage.getItem("token");
+        if (!token) return;
+        fetch(`${API_BASE_URL}/support/tickets/my-pending-count`, {
+            headers: { Authorization: `Bearer ${token}` },
+        })
+            .then((res) => res.json())
+            .then((data) => {
+                if (data?.status === "success" && typeof data?.data?.count === "number") {
+                    setMyPendingSupportCount(data.data.count);
+                }
+            })
+            .catch(() => setMyPendingSupportCount(0));
+    }, [user, pathname]);
 
     return (
         <>
@@ -115,18 +170,25 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                             {mainMenuItems.map((item) => {
                                 const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
                                 const Icon = item.icon;
+                                const showMyPendingDot = item.href === "/support" && myPendingSupportCount > 0;
 
                                 return (
                                     <Link key={item.href} href={item.href} onClick={onClose}>
                                         <Button
                                             variant={isActive ? "default" : "ghost"}
                                             className={cn(
-                                                "w-full justify-start gap-3",
+                                                "w-full justify-start gap-3 relative",
                                                 isActive && "bg-primary text-primary-foreground"
                                             )}
                                         >
                                             <Icon className="h-5 w-5" />
                                             {item.title}
+                                            {showMyPendingDot && (
+                                                <span
+                                                    className="absolute right-3 h-2 w-2 rounded-full bg-red-500 shrink-0"
+                                                    aria-label={`${myPendingSupportCount} open or in-progress ticket(s)`}
+                                                />
+                                            )}
                                         </Button>
                                     </Link>
                                 );
@@ -142,18 +204,25 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
                                 const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
                                 const Icon = item.icon;
+                                const showPendingDot = item.adminOnly && pendingSupportCount > 0;
 
                                 return (
                                     <Link key={item.href} href={item.href} onClick={onClose}>
                                         <Button
                                             variant={isActive ? "default" : "ghost"}
                                             className={cn(
-                                                "w-full justify-start gap-3",
+                                                "w-full justify-start gap-3 relative",
                                                 isActive && "bg-primary text-primary-foreground"
                                             )}
                                         >
                                             <Icon className="h-5 w-5" />
                                             {item.title}
+                                            {showPendingDot && (
+                                                <span
+                                                    className="absolute right-3 h-2 w-2 rounded-full bg-red-500 shrink-0"
+                                                    aria-label={`${pendingSupportCount} pending support ticket(s)`}
+                                                />
+                                            )}
                                         </Button>
                                     </Link>
                                 );

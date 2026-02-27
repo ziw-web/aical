@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Megaphone, Play, Loader2, CheckCircle2, Clock, StopCircle, Bot, Users, LayoutGrid, List, MoreHorizontal, Trash2 } from "lucide-react";
+import { Megaphone, Play, Loader2, CheckCircle2, Clock, StopCircle, Bot, Users, LayoutGrid, List, MoreHorizontal, Trash2, Copy, CalendarClock } from "lucide-react";
 import { CreateCampaignDialog } from "@/components/campaigns/create-campaign-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -53,7 +53,8 @@ interface Campaign {
         name: string;
     } | null;
     leadIds: string[];
-    status: "idle" | "running" | "completed" | "stopped";
+    status: "idle" | "scheduled" | "running" | "completed" | "stopped";
+    scheduledAt?: string | null;
     createdAt: string;
 }
 
@@ -66,6 +67,7 @@ export default function CampaignsPage() {
     const [hasHydrated, setHasHydrated] = useState(false);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
     const pollInterval = useRef<NodeJS.Timeout | null>(null);
 
     // Initial load from localStorage and mobile check
@@ -129,13 +131,29 @@ export default function CampaignsPage() {
                 }
             }
 
-            await axios.post(`${API_BASE_URL}/campaigns/${id}/start`, {}, {
+            await axios.post(`${API_BASE_URL}/campaigns/start`, { id }, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             toast.success("Campaign started successfully");
             fetchCampaigns(false);
         } catch (err: any) {
             toast.error(err.response?.data?.message || "Failed to start campaign");
+        }
+    };
+
+    const handleDuplicate = async (id: string) => {
+        try {
+            setDuplicatingId(id);
+            const token = localStorage.getItem("token");
+            await axios.post(`${API_BASE_URL}/campaigns/duplicate`, { id }, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            toast.success("Campaign duplicated");
+            fetchCampaigns();
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || "Failed to duplicate campaign");
+        } finally {
+            setDuplicatingId(null);
         }
     };
 
@@ -193,11 +211,12 @@ export default function CampaignsPage() {
         fetchCampaigns();
     }, [fetchCampaigns]);
 
-    // Polling logic if any campaign is running
+    // Poll when any campaign is running (live progress) or scheduled (so we pick up scheduler starting them)
     useEffect(() => {
         const hasRunningCampaign = campaigns.some(c => c.status === "running");
+        const hasScheduledCampaign = campaigns.some(c => c.status === "scheduled");
 
-        if (hasRunningCampaign) {
+        if (hasRunningCampaign || hasScheduledCampaign) {
             if (!pollInterval.current) {
                 pollInterval.current = setInterval(() => {
                     fetchCampaigns(false);
@@ -221,6 +240,7 @@ export default function CampaignsPage() {
     const getStatusBadge = (status: Campaign["status"]) => {
         const variants = {
             idle: "bg-slate-100 text-slate-700 dark:bg-slate-500/10 dark:text-slate-400 border-slate-200 dark:border-slate-500/20",
+            scheduled: "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20",
             running: "bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 border-blue-200 dark:border-blue-500/20 animate-pulse",
             completed: "bg-green-100 text-green-700 dark:bg-green-500/10 dark:text-green-400 border-green-200 dark:border-green-500/20",
             stopped: "bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-400 border-red-200 dark:border-red-500/20",
@@ -228,6 +248,7 @@ export default function CampaignsPage() {
 
         const icons = {
             idle: <Clock className="mr-1 h-3 w-3" />,
+            scheduled: <CalendarClock className="mr-1 h-3 w-3" />,
             running: <Loader2 className="mr-1 h-3 w-3 animate-spin" />,
             completed: <CheckCircle2 className="mr-1 h-3 w-3" />,
             stopped: <StopCircle className="mr-1 h-3 w-3" />,
@@ -321,6 +342,44 @@ export default function CampaignsPage() {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-8 w-8 p-0 shrink-0"
+                                            disabled={duplicatingId === campaign._id}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDuplicate(campaign._id);
+                                            }}
+                                            title="Duplicate campaign"
+                                        >
+                                            {duplicatingId === campaign._id ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                                <Copy className="h-4 w-4" />
+                                            )}
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-8 w-8 p-0 shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                            disabled={campaign.status === "running" || isDeleting}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDelete(campaign._id);
+                                            }}
+                                            title="Delete campaign"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                        {campaign.status === "scheduled" ? (
+                                            <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                                <CalendarClock className="h-3.5 w-3.5" />
+                                                {campaign.scheduledAt
+                                                    ? new Date(campaign.scheduledAt).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })
+                                                    : "Scheduled"}
+                                            </span>
+                                        ) : (
+                                        <Button
                                             variant={campaign.status === "running" ? "destructive" : "default"}
                                             disabled={campaign.status === "completed"}
                                             onClick={(e) => {
@@ -345,6 +404,7 @@ export default function CampaignsPage() {
                                                 </>
                                             )}
                                         </Button>
+                                        )}
                                     </div>
                                 </div>
                             </Card>
@@ -424,6 +484,31 @@ export default function CampaignsPage() {
                                                 </Button>
                                                 <Button
                                                     size="sm"
+                                                    variant="outline"
+                                                    className="h-7 text-xs"
+                                                    disabled={duplicatingId === campaign._id}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDuplicate(campaign._id);
+                                                    }}
+                                                >
+                                                    {duplicatingId === campaign._id ? (
+                                                        <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                                                    ) : (
+                                                        <Copy className="mr-1.5 h-3 w-3" />
+                                                    )}
+                                                    Duplicate
+                                                </Button>
+                                                {campaign.status === "scheduled" ? (
+                                                    <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                                        <CalendarClock className="h-3.5 w-3.5" />
+                                                        {campaign.scheduledAt
+                                                            ? new Date(campaign.scheduledAt).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })
+                                                            : "Scheduled"}
+                                                    </span>
+                                                ) : (
+                                                <Button
+                                                    size="sm"
                                                     variant={campaign.status === "running" ? "destructive" : "default"}
                                                     className="h-7 text-xs"
                                                     disabled={campaign.status === "completed"}
@@ -444,6 +529,7 @@ export default function CampaignsPage() {
                                                         </>
                                                     )}
                                                 </Button>
+                                                )}
                                                 <Button
                                                     size="sm"
                                                     variant="ghost"

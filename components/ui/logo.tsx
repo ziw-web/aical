@@ -21,14 +21,8 @@ export function Logo({ className, width = 140, height = 40, variant = "auto" }: 
 
     if (variant === "white") {
         return (
-            <div className={cn("relative", className)}>
-                <Image
-                    src="/images/logo_white.png"
-                    alt="aical Logo"
-                    width={width}
-                    height={height}
-                    priority
-                />
+            <div style={{ fontSize: "27px" }} className={cn("relative", className)}>
+                ai<span style={{ color: "#8078f0e6" }}>cal</span>
             </div>
         );
     }
@@ -37,7 +31,7 @@ export function Logo({ className, width = 140, height = 40, variant = "auto" }: 
         <div className={cn("relative", className)}>
             <Image
                 src="/images/logo_black.png"
-                alt="aical Logo"
+                alt="aical AI Logo"
                 width={width}
                 height={height}
                 className="dark:hidden block"
@@ -45,7 +39,7 @@ export function Logo({ className, width = 140, height = 40, variant = "auto" }: 
             />
             <Image
                 src="/images/logo_white.png"
-                alt="aical Logo"
+                alt="aical AI Logo"
                 width={width}
                 height={height}
                 className="hidden dark:block"

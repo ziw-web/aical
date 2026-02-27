@@ -79,14 +79,14 @@ export default function PrivacyPage() {
 
                     <div className="pt-12 border-t border-slate-100 text-center">
                         <p className="text-slate-500 max-w-2xl mx-auto">
-                            By using IntelliCall AI, you agree to the collection and use of information in accordance with this policy. We reserve the right to update this policy at any time.
+                            By using aical AI, you agree to the collection and use of information in accordance with this policy. We reserve the right to update this policy at any time.
                         </p>
                     </div>
                 </div>
             </main>
 
             <footer className="mt-auto border-t border-slate-100 py-8 px-6 text-center text-slate-400 text-sm">
-                © {new Date().getFullYear()} IntelliCall AI. All rights reserved.
+                © {new Date().getFullYear()} aical AI. All rights reserved.
             </footer>
         </div>
     );

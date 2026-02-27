@@ -43,7 +43,7 @@ export default function TermsPage() {
                                 <h2 className="text-2xl font-bold m-0">1. Acceptance of Terms</h2>
                             </div>
                             <p>
-                                By accessing or using IntelliCall AI, you agree to be bound by these Terms of Service. If you do not agree to all terms, you must not access or use our services.
+                                By accessing or using aical AI, you agree to be bound by these Terms of Service. If you do not agree to all terms, you must not access or use our services.
                             </p>
                         </section>
 
@@ -73,7 +73,7 @@ export default function TermsPage() {
                         <section className="space-y-4">
                             <h2 className="text-2xl font-bold text-slate-900">4. Limitation of Liability</h2>
                             <p>
-                                IntelliCall AI shall not be liable for any indirect, incidental, or consequential damages arising out of your use of the service or any actions taken by automated agents based on your instructions.
+                                aical AI shall not be liable for any indirect, incidental, or consequential damages arising out of your use of the service or any actions taken by automated agents based on your instructions.
                             </p>
                         </section>
 
@@ -94,7 +94,7 @@ export default function TermsPage() {
             </main>
 
             <footer className="mt-auto border-t border-slate-100 py-8 px-6 text-center text-slate-400 text-sm">
-                © {new Date().getFullYear()} IntelliCall AI. All rights reserved.
+                © {new Date().getFullYear()} aical AI. All rights reserved.
             </footer>
         </div>
     );

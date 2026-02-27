@@ -111,7 +111,7 @@ export default function ContactPage() {
             </main>
 
             <footer className="mt-auto border-t border-slate-100 py-8 px-6 text-center text-slate-400 text-sm">
-                © {new Date().getFullYear()} IntelliCall AI. All rights reserved.
+                © {new Date().getFullYear()} aical AI. All rights reserved.
             </footer>
         </div>
     );
