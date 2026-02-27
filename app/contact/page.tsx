@@ -55,7 +55,7 @@ export default function ContactPage() {
                                 </div>
                                 <div>
                                     <h4 className="font-bold">Email Us</h4>
-                                    <p className="text-slate-500">support@intellicall.ai</p>
+                                    <p className="text-slate-500">zowmmo1@gmail.com</p>
                                 </div>
                             </div>
                             <div className="flex items-start gap-4">

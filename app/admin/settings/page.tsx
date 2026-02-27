@@ -47,7 +47,7 @@ export default function AdminSettingsPage() {
             if (response.data?.status === "success" && response.data.data.settings) {
                 setSettings({
                     currency: response.data.data.settings.currency || "USD",
-                    supportEmail: response.data.data.settings.supportEmail || "support@intellicall.ai"
+                    supportEmail: response.data.data.settings.supportEmail || "zowmmo1@gmail.com"
                 });
             }
         } catch (err: any) {

@@ -10,14 +10,14 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/a
 
 export default function DeactivatedPage() {
     const router = useRouter();
-    const [supportEmail, setSupportEmail] = useState("support@intellicall.ai");
+    const [supportEmail, setSupportEmail] = useState("zowmmo1@gmail.com");
 
     useEffect(() => {
         const fetchSettings = async () => {
             try {
                 const response = await axios.get(`${API_BASE_URL}/settings/public`);
                 if (response.data?.status === "success") {
-                    setSupportEmail(response.data.data.supportEmail || "support@intellicall.ai");
+                    setSupportEmail(response.data.data.supportEmail || "zowmmo1@gmail.com");
                 }
             } catch (err) {
                 console.error("Failed to fetch public settings", err);
