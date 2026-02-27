@@ -158,7 +158,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             )}>
                 <div className="flex h-16 items-center justify-between border-b px-6">
                     <Link href="/dashboard" className="flex items-center" onClick={onClose}>
-                        <Logo width={160} height={45} />
+                        <span style={{ fontSize: "27px" }}>
+							ai<span style={{ color: "#8078f0e6" }}>cal</span>
+						</span>
                     </Link>
                     <Button variant="ghost" size="icon" className="lg:hidden" onClick={onClose}>
                         <X className="h-5 w-5" />
