@@ -5,8 +5,9 @@ applications:
       phases:
         preBuild:
           commands:
-            - nvm install 22
-            - nvm use 22
+            # Use a specific stable Node version
+            - nvm install 22.22.2
+            - nvm use 22.22.2
             - node -v
             - npm ci
         build:
@@ -17,5 +18,6 @@ applications:
         files:
           - '**/*'
       cache:
+        # Cache node_modules for faster builds
         paths:
           - node_modules/**/*
