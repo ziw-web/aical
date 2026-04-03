@@ -20,7 +20,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
         );
 
-        const publicRoutes = ["/", "/login", "/signup", "/auth/callback", "/deactivated", "/about", "/contact", "/privacy", "/terms"];
+        const publicRoutes = ["/", "/login", "/signup", "/auth/callback", "/deactivated"];
         const isPublicRoute = publicRoutes.includes(pathname);
         const isAuthenticated = typeof window !== "undefined" && !!localStorage.getItem("token");
         const userStr = typeof window !== "undefined" ? localStorage.getItem("user") : null;

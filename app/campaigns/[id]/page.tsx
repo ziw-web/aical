@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, type ReactNode } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
     ChevronLeft,
@@ -13,7 +13,6 @@ import {
     Users,
     Phone,
     Calendar,
-    CalendarClock,
     Activity,
     MessageSquare,
     Brain,
@@ -68,7 +67,7 @@ interface Lead {
     name: string;
     phone: string;
     tags: string[];
-    callStatus?: "pending" | "initiated" | "queued" | "ringing" | "in-progress" | "completed" | "failed" | "busy" | "no-answer" | "canceled";
+    callStatus?: "pending" | "queued" | "ringing" | "in-progress" | "completed" | "failed" | "busy" | "no-answer" | "canceled";
     lastCallTime?: string;
     lastCallTimestamp?: string;
     duration?: string;
@@ -88,15 +87,13 @@ interface Campaign {
     name: string;
     agentId: Agent;
     leadIds: Lead[];
-    status: "idle" | "scheduled" | "running" | "completed" | "stopped";
-    scheduledAt?: string | null;
+    status: "idle" | "running" | "completed" | "stopped";
     createdAt: string;
 }
 
 export default function CampaignDetailsPage() {
-    const params = useParams<{ id: string }>();
+    const params = useParams();
     const router = useRouter();
-    const campaignId = typeof params.id === "string" ? params.id : params.id?.[0] ?? "";
     const [campaign, setCampaign] = useState<Campaign | null>(null);
     const [callLogs, setCallLogs] = useState<CallLog[]>([]);
     const [loading, setLoading] = useState(true);
@@ -108,19 +105,15 @@ export default function CampaignDetailsPage() {
         try {
             if (showLoading) setLoading(true);
             const token = localStorage.getItem("token");
-            const response = await axios.get(`${API_BASE_URL}/campaigns/${campaignId}`, {
+            const response = await axios.get(`${API_BASE_URL}/campaigns/${params.id}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.data?.status === "success") {
                 const { campaign: fetchedCampaign, callLogs: fetchedLogs } = response.data.data;
 
-                // Map logs to leads: use latest log per lead for execution status (robust id comparison)
-                const leadIdStr = (id: any) => (id && (typeof id === 'string' ? id : id._id)) || '';
+                // Map logs to leads for easier UI rendering
                 const enrichedLeads = fetchedCampaign.leadIds.map((lead: any) => {
-                    const leadLogs = fetchedLogs
-                        .filter((log: any) => leadIdStr(log.leadId) === leadIdStr(lead._id))
-                        .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-                    const leadLog = leadLogs[0];
+                    const leadLog = fetchedLogs.find((log: any) => log.leadId === lead._id);
                     if (leadLog) {
                         return {
                             ...lead,
@@ -150,13 +143,13 @@ export default function CampaignDetailsPage() {
         } finally {
             if (showLoading) setLoading(false);
         }
-    }, [campaignId, router]);
+    }, [params.id, router]);
 
     const startCampaign = async () => {
         if (!campaign) return;
         try {
             const token = localStorage.getItem("token");
-            await axios.post(`${API_BASE_URL}/campaigns/start`, { id: campaign._id }, {
+            await axios.post(`${API_BASE_URL}/campaigns/${campaign._id}/start`, {}, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             toast.success("Campaign sequence started");
@@ -173,7 +166,7 @@ export default function CampaignDetailsPage() {
         try {
             toast.loading("Stopping campaign...", { id: "stop-campaign" });
             const token = localStorage.getItem("token");
-            await axios.post(`${API_BASE_URL}/campaigns/stop`, { id: campaign._id }, {
+            await axios.post(`${API_BASE_URL}/campaigns/${campaign._id}/stop`, {}, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             toast.success("Campaign stopped successfully", { id: "stop-campaign" });
@@ -192,7 +185,7 @@ export default function CampaignDetailsPage() {
             ["queued", "ringing", "in-progress", "initiated"].includes(lead.callStatus || "")
         );
 
-        if (campaign?.status === "running" || campaign?.status === "scheduled" || hasActiveCalls) {
+        if (campaign?.status === "running" || hasActiveCalls) {
             if (!pollInterval.current) {
                 pollInterval.current = setInterval(() => {
                     fetchCampaign(false);
@@ -232,9 +225,7 @@ export default function CampaignDetailsPage() {
 
     const totalFinished = completedCount + failedCount;
     const successRate = totalFinished > 0 ? Math.round((completedCount / totalFinished) * 100) : 0;
-    const progress = campaign.leadIds.length > 0
-        ? ((completedCount + failedCount) / campaign.leadIds.length) * 100
-        : 0;
+    const progress = ((completedCount + failedCount) / campaign.leadIds.length) * 100;
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
@@ -261,13 +252,6 @@ export default function CampaignDetailsPage() {
                             <StopCircle className="mr-2 h-4 w-4" />
                             Stop Campaign
                         </Button>
-                    ) : campaign.status === "scheduled" ? (
-                        <span className="text-sm text-muted-foreground flex items-center gap-2">
-                            <CalendarClock className="h-4 w-4" />
-                            Scheduled for {campaign.scheduledAt
-                                ? new Date(campaign.scheduledAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
-                                : "—"}
-                        </span>
                     ) : (
                         <Button
                             disabled={campaign.status === "completed"}
@@ -618,7 +602,7 @@ export default function CampaignDetailsPage() {
 // Helpers
 // -------
 
-function renderVariableHighlight(text: string | undefined): ReactNode {
+function renderVariableHighlight(text: string) {
     if (!text) return "";
     const parts = text.split(/(\{\{[^{}]+\}\})/g);
     return parts.map((part, i) => {
@@ -636,7 +620,6 @@ function renderVariableHighlight(text: string | undefined): ReactNode {
 function StatusBadge({ status }: { status: Campaign["status"] }) {
     const variants = {
         idle: "secondary",
-        scheduled: "outline",
         running: "default",
         completed: "outline",
         stopped: "destructive",
@@ -644,7 +627,6 @@ function StatusBadge({ status }: { status: Campaign["status"] }) {
 
     const icons = {
         idle: <Clock className="mr-1.5 h-3.5 w-3.5" />,
-        scheduled: <CalendarClock className="mr-1.5 h-3.5 w-3.5" />,
         running: <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />,
         completed: <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />,
         stopped: <StopCircle className="mr-1.5 h-3.5 w-3.5" />,

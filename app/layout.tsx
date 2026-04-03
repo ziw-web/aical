@@ -11,38 +11,10 @@ const sora = Sora({
   weight: ["300", "400", "500", "600", "700"],
 });
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
-
-export async function generateMetadata(): Promise<Metadata> {
-  let appName = "IntelliCallAI";
-  let faviconUrl = "/favicon.ico";
-  try {
-    const res = await fetch(`${API_BASE_URL}/settings/public`, { cache: 'no-store' });
-    if (res.ok) {
-      const data = await res.json();
-      appName = data?.data?.branding?.appName || appName;
-      const dbFavicon = data?.data?.branding?.favicon;
-      if (dbFavicon) {
-        faviconUrl = dbFavicon.startsWith('/uploads/')
-          ? `${API_BASE_URL.replace(/\/api$/, '')}${dbFavicon}`
-          : dbFavicon;
-      }
-    }
-  } catch { }
-  // Append cache-buster to force browser re-fetch on branding changes
-  const cacheBuster = `v=${Date.now()}`;
-  const finalFaviconUrl = `${faviconUrl}${faviconUrl.includes('?') ? '&' : '?'}${cacheBuster}`;
-
-  return {
-    title: `${appName} - Dashboard`,
-    description: "AI-powered outbound calling platform",
-    icons: {
-      icon: [
-        { url: finalFaviconUrl, sizes: 'any' },
-      ],
-    },
-  };
-}
+export const metadata: Metadata = {
+  title: "IntelliCall AI - Dashboard",
+  description: "AI-powered outbound calling platform",
+};
 
 import { ThemeProvider } from "@/components/theme-provider";
 import { SettingsProvider } from "@/components/settings-provider";

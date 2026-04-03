@@ -26,7 +26,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import axios from "axios";
-import { Plus, Search, CalendarClock } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
@@ -46,17 +46,6 @@ interface CreateCampaignDialogProps {
     onSuccess?: () => void;
 }
 
-function getCreateCampaignErrorMessage(err: unknown): string {
-    const fallback = "Failed to create campaign";
-    if (!err || typeof err !== "object") return fallback;
-    const ax = err as { response?: { data?: { message?: unknown } } };
-    const raw = ax.response?.data?.message;
-    const msg = typeof raw === "string" ? raw.trim() : "";
-    if (!msg) return fallback;
-    if (/agent\s*id/i.test(msg)) return "Please select an agent";
-    return msg;
-}
-
 export function CreateCampaignDialog({ onSuccess }: CreateCampaignDialogProps) {
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -68,8 +57,6 @@ export function CreateCampaignDialog({ onSuccess }: CreateCampaignDialogProps) {
         name: "",
         agentId: "",
         selectedLeads: [] as string[],
-        scheduleEnabled: false,
-        scheduledAt: "", // datetime-local value: YYYY-MM-DDTHH:mm
     });
 
     useEffect(() => {
@@ -147,10 +134,6 @@ export function CreateCampaignDialog({ onSuccess }: CreateCampaignDialogProps) {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!formData.agentId?.trim()) {
-            toast.error("Please select an agent");
-            return;
-        }
         if (formData.selectedLeads.length === 0) {
             toast.error("Please select at least one lead");
             return;
@@ -159,29 +142,25 @@ export function CreateCampaignDialog({ onSuccess }: CreateCampaignDialogProps) {
         setLoading(true);
         try {
             const token = localStorage.getItem("token");
-            const payload: { name: string; agentId: string; leadIds: string[]; scheduledAt?: string } = {
+            const response = await axios.post(`${API_BASE_URL}/campaigns`, {
                 name: formData.name,
                 agentId: formData.agentId,
                 leadIds: formData.selectedLeads
-            };
-            if (formData.scheduleEnabled && formData.scheduledAt) {
-                payload.scheduledAt = new Date(formData.scheduledAt).toISOString();
-            }
-            const response = await axios.post(`${API_BASE_URL}/campaigns`, payload, {
+            }, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
-            toast.success(payload.scheduledAt ? "Campaign scheduled successfully!" : "Campaign created successfully!");
+            toast.success("Campaign created successfully!");
             setOpen(false);
-            setFormData({ name: "", agentId: "", selectedLeads: [], scheduleEnabled: false, scheduledAt: "" });
+            setFormData({ name: "", agentId: "", selectedLeads: [] });
             onSuccess?.();
 
             // Redirect to the new campaign details page
             if (response.data?.data?.campaign?._id) {
                 router.push(`/campaigns/${response.data.data.campaign._id}`);
             }
-        } catch (err: unknown) {
-            toast.error(getCreateCampaignErrorMessage(err));
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || "Failed to create campaign");
         } finally {
             setLoading(false);
         }
@@ -239,37 +218,6 @@ export function CreateCampaignDialog({ onSuccess }: CreateCampaignDialogProps) {
                                     ))}
                                 </SelectContent>
                             </Select>
-                        </div>
-
-                        <div className="grid gap-2">
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="checkbox"
-                                    id="schedule-campaign"
-                                    checked={formData.scheduleEnabled}
-                                    onChange={(e) => setFormData({ ...formData, scheduleEnabled: e.target.checked })}
-                                    disabled={loading}
-                                    className="h-4 w-4 rounded border-input"
-                                />
-                                <Label htmlFor="schedule-campaign" className="flex items-center gap-1.5 cursor-pointer">
-                                    <CalendarClock className="h-4 w-4 text-muted-foreground" />
-                                    Schedule for later
-                                </Label>
-                            </div>
-                            {formData.scheduleEnabled && (
-                                <div className="grid gap-1.5">
-                                    <Label htmlFor="scheduled-at">Date & time</Label>
-                                    <input
-                                        id="scheduled-at"
-                                        type="datetime-local"
-                                        value={formData.scheduledAt}
-                                        onChange={(e) => setFormData({ ...formData, scheduledAt: e.target.value })}
-                                        disabled={loading}
-                                        min={new Date().toISOString().slice(0, 16)}
-                                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                    />
-                                </div>
-                            )}
                         </div>
 
                         <div className="grid gap-2">

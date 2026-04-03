@@ -22,8 +22,7 @@ import {
     History,
     RefreshCw,
     Download,
-    Play,
-    AlertTriangle
+    Play
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -83,12 +82,6 @@ interface CallLog {
     transcript: TranscriptItem[];
     recordingUrl?: string;
     summary?: string;
-    errors?: {
-        service: 'elevenlabs' | 'deepgram' | 'openrouter' | 'twilio' | 'system';
-        code: string;
-        message: string;
-        timestamp: string;
-    }[];
     analysis?: {
         isQualified: boolean;
         qualificationScore: number;
@@ -372,11 +365,6 @@ export default function CallLogsPage() {
                                             <TableCell>
                                                 <div className="flex items-center gap-2">
                                                     <StatusBadge status={log.status} />
-                                                    {log.errors && log.errors.length > 0 && (
-                                                        <span title={log.errors[0].message} className="flex items-center">
-                                                            <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-                                                        </span>
-                                                    )}
                                                 </div>
                                             </TableCell>
                                             <TableCell>
@@ -482,35 +470,6 @@ export default function CallLogsPage() {
                                                 <p className="text-xs font-semibold">{selectedLog && selectedLog.duration}s</p>
                                             </div>
                                         </div>
-
-                                        {/* Error Alerts */}
-                                        {selectedLog?.errors && selectedLog.errors.length > 0 && (
-                                            <div className="rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-4 space-y-2">
-                                                <div className="flex items-center gap-2">
-                                                    <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
-                                                    <h4 className="text-sm font-bold text-red-700 dark:text-red-400 uppercase tracking-wider">Call Issues Detected</h4>
-                                                </div>
-                                                <div className="space-y-1.5">
-                                                    {selectedLog.errors.map((error, index) => {
-                                                        const serviceColors: Record<string, string> = {
-                                                            elevenlabs: 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300 border-purple-200 dark:border-purple-500/30',
-                                                            deepgram: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300 border-blue-200 dark:border-blue-500/30',
-                                                            openrouter: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30',
-                                                            twilio: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300 border-red-200 dark:border-red-500/30',
-                                                            system: 'bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-gray-300 border-gray-200 dark:border-gray-500/30',
-                                                        };
-                                                        return (
-                                                            <div key={index} className="flex items-start gap-2 text-sm">
-                                                                <Badge variant="outline" className={`text-[8px] h-4 px-1.5 uppercase tracking-tighter shrink-0 mt-0.5 border ${serviceColors[error.service] || serviceColors.system}`}>
-                                                                    {error.service}
-                                                                </Badge>
-                                                                <span className="text-red-700 dark:text-red-300 text-xs leading-relaxed">{error.message}</span>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-                                        )}
 
                                         {/* AI Analysis Section */}
                                         <div className="space-y-4">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -18,13 +18,12 @@ import {
     Edit,
     Trash2,
     Loader2,
+    ArrowLeft,
     Info,
     Settings,
+    PhoneIncoming,
     User,
-    Phone,
-    Server,
-    Zap,
-    Copy,
+    Phone
 } from "lucide-react";
 import {
     DropdownMenu,
@@ -39,7 +38,6 @@ import { PhoneNumberDialog } from "@/components/numbers/phone-number-dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Link from "next/link";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import { cn } from "@/lib/utils";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
@@ -49,12 +47,6 @@ export default function PhoneNumbersPage() {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [selectedNumber, setSelectedNumber] = useState<any>(null);
     const [isTwilioConfigured, setIsTwilioConfigured] = useState(true);
-    const [configStatus, setConfigStatus] = useState({
-        isElevenLabsConfigured: true,
-        isDeepgramConfigured: true,
-        isModelConfigured: true
-    });
-    const [sipOriginationUri, setSipOriginationUri] = useState('');
 
     const fetchNumbers = useCallback(async () => {
         try {
@@ -72,14 +64,7 @@ export default function PhoneNumbersPage() {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (configRes.data?.status === "success") {
-                const { isTwilioConfigured, isElevenLabsConfigured, isDeepgramConfigured, isModelConfigured, sipOriginationUri } = configRes.data.data;
-                setIsTwilioConfigured(isTwilioConfigured);
-                setConfigStatus({
-                    isElevenLabsConfigured,
-                    isDeepgramConfigured,
-                    isModelConfigured
-                });
-                if (sipOriginationUri) setSipOriginationUri(sipOriginationUri);
+                setIsTwilioConfigured(configRes.data.data.isTwilioConfigured);
             }
         } catch (err: any) {
             console.error("Failed to fetch data:", err);
@@ -118,36 +103,6 @@ export default function PhoneNumbersPage() {
     };
 
     const [testingNumberId, setTestingNumberId] = useState<string | null>(null);
-    const sipWsRef = useRef<WebSocket | null>(null);
-
-    // Connect WebSocket to listen for real-time SIP events (call failures, etc.)
-    useEffect(() => {
-        const wsBase = API_BASE_URL.replace(/^http/, "ws").replace(/\/api$/, "");
-        const ws = new WebSocket(wsBase);
-        sipWsRef.current = ws;
-
-        ws.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                if (data.type === "sip:call-failed") {
-                    toast.error(data.reason || "SIP call failed", {
-                        description: "Check your SIP trunk configuration in your provider's portal.",
-                        duration: 10000,
-                    });
-                    setTestingNumberId(null);
-                }
-            } catch (_) { }
-        };
-
-        ws.onerror = () => { };
-        ws.onclose = () => { };
-
-        return () => {
-            if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
-                ws.close();
-            }
-        };
-    }, []);
 
     const handleTestCall = async (number: any) => {
         const phoneToCall = prompt("Enter the phone number to call (with country code, e.g. +1234567890):");
@@ -162,25 +117,13 @@ export default function PhoneNumbersPage() {
             }, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            if (number.provider === "sip") {
-                toast.info("SIP call initiated. Waiting for the provider to connect...", {
-                    description: "If the call doesn't ring within 15 seconds, check your SIP trunk settings.",
-                    duration: 15000,
-                });
-                // Auto-clear loading state after 20s if no error event comes
-                setTimeout(() => setTestingNumberId((prev) => prev === number._id ? null : prev), 20000);
-            } else {
-                toast.success("Test call initiated! Check your phone.");
-                setTestingNumberId(null);
-            }
+            toast.success("Test call initiated! Check your phone.");
         } catch (err: any) {
             toast.error(err.response?.data?.message || "Failed to initiate test call");
+        } finally {
             setTestingNumberId(null);
         }
     };
-
-    const hasSipNumbers = numbers.some((n) => n.provider === "sip");
-    const hasTwilioNumbers = numbers.some((n) => !n.provider || n.provider === "twilio");
 
     return (
         <div className="flex-col md:flex">
@@ -188,7 +131,7 @@ export default function PhoneNumbersPage() {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                         <h1 className="text-3xl font-bold">Phone Numbers</h1>
-                        <p className="text-muted-foreground">Manage your Twilio and SIP phone numbers for outbound campaigns and inbound calls.</p>
+                        <p className="text-muted-foreground">Manage your Twilio phone numbers and inbound call agents.</p>
                     </div>
                     <Button onClick={handleAdd} className="w-full md:w-auto">
                         <Plus className="mr-2 h-4 w-4" />
@@ -196,26 +139,13 @@ export default function PhoneNumbersPage() {
                     </Button>
                 </div>
 
-                {(!configStatus.isElevenLabsConfigured || !configStatus.isDeepgramConfigured || !configStatus.isModelConfigured) && (
-                    <Alert variant="warning" className="border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-500/20">
-                        <Zap className="h-4 w-4 text-amber-600" />
-                        <AlertTitle className="text-amber-800 dark:text-amber-400">AI Infrastructure Not Configured</AlertTitle>
-                        <AlertDescription className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-amber-700 dark:text-amber-500">
-                            <span>Deepgram, ElevenLabs, and OpenRouter are required for AI calling to work.</span>
-                            <Button variant="outline" size="sm" asChild className="border-amber-200 dark:border-amber-500/30 shrink-0 text-amber-700 dark:text-amber-400">
-                                <Link href="/settings">Configure AI Keys</Link>
-                            </Button>
-                        </AlertDescription>
-                    </Alert>
-                )}
-
-                {!isTwilioConfigured && hasTwilioNumbers && (
+                {!isTwilioConfigured && (
                     <Alert variant="destructive">
                         <Settings className="h-4 w-4" />
                         <AlertTitle>Twilio Not Configured</AlertTitle>
                         <AlertDescription className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                            <span>You need to configure your Twilio SID and Token in Settings before you can use Twilio numbers.</span>
-                            <Button variant="outline" size="sm" asChild className="shrink-0">
+                            <span>You need to configure your Twilio SID and Token in Settings before you can use these numbers.</span>
+                            <Button variant="outline" size="sm" asChild className="bg-white hover:bg-slate-50 border-input shrink-0">
                                 <Link href="/settings">Configure Now</Link>
                             </Button>
                         </AlertDescription>
@@ -229,7 +159,7 @@ export default function PhoneNumbersPage() {
                             <CardTitle>Connected Numbers</CardTitle>
                         </div>
                         <CardDescription>
-                            Your phone numbers linked to Twilio or SIP trunks, ready for outbound campaigns and inbound calls.
+                            Your Twilio numbers that are ready to handle outbound campaigns and inbound calls.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -238,11 +168,11 @@ export default function PhoneNumbersPage() {
                                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
                             </div>
                         ) : numbers.length === 0 ? (
-                            <div className="text-center py-12 border-2 border-dashed border-border rounded-xl">
-                                <Hash className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
-                                <h3 className="text-lg font-medium text-foreground">No numbers connected</h3>
-                                <p className="text-muted-foreground max-w-sm mx-auto mb-6">
-                                    Add your first phone number (Twilio or SIP) to start making AI voice calls.
+                            <div className="text-center py-12 border-2 border-dashed rounded-xl">
+                                <Hash className="h-12 w-12 text-slate-200 mx-auto mb-4" />
+                                <h3 className="text-lg font-medium text-slate-900">No numbers connected</h3>
+                                <p className="text-slate-500 max-w-sm mx-auto mb-6">
+                                    Add your first Twilio phone number to start making AI voice calls.
                                 </p>
                                 <Button onClick={handleAdd} variant="outline" className="rounded-full">
                                     <Plus className="mr-2 h-4 w-4" />
@@ -250,47 +180,25 @@ export default function PhoneNumbersPage() {
                                 </Button>
                             </div>
                         ) : (
-                            <div className="rounded-xl border border-border overflow-hidden">
+                            <div className="rounded-xl border overflow-hidden">
                                 <Table>
                                     <TableHeader>
-                                        <TableRow className="bg-muted/50 hover:bg-muted/50">
-                                            <TableHead className="py-4 font-bold text-muted-foreground uppercase text-[10px]">Friendly Name</TableHead>
-                                            <TableHead className="py-4 font-bold text-muted-foreground uppercase text-[10px]">Phone Number</TableHead>
-                                            <TableHead className="py-4 font-bold text-muted-foreground uppercase text-[10px]">Provider</TableHead>
-                                            <TableHead className="py-4 font-bold text-muted-foreground uppercase text-[10px]">Inbound Agent</TableHead>
-                                            <TableHead className="py-4 font-bold text-muted-foreground uppercase text-[10px]">Test Call</TableHead>
-                                            <TableHead className="py-4 text-right font-bold text-muted-foreground uppercase text-[10px]">Actions</TableHead>
+                                        <TableRow className="bg-slate-50/50">
+                                            <TableHead className="py-4 font-bold text-slate-500 uppercase text-[10px]">Friendly Name</TableHead>
+                                            <TableHead className="py-4 font-bold text-slate-500 uppercase text-[10px]">Phone Number</TableHead>
+                                            <TableHead className="py-4 font-bold text-slate-500 uppercase text-[10px]">Inbound Agent</TableHead>
+                                            <TableHead className="py-4 font-bold text-slate-500 uppercase text-[10px]">Test Call</TableHead>
+                                            <TableHead className="py-4 text-right font-bold text-slate-500 uppercase text-[10px]">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {numbers.map((number) => (
-                                            <TableRow key={number._id} className="hover:bg-muted/30 transition-colors">
-                                                <TableCell className="py-4 font-bold text-foreground">
+                                            <TableRow key={number._id} className="hover:bg-slate-50/30 transition-colors">
+                                                <TableCell className="py-4 font-bold text-slate-900">
                                                     {number.name}
                                                 </TableCell>
-                                                <TableCell className="py-4 font-mono text-muted-foreground">
+                                                <TableCell className="py-4 font-mono text-slate-600">
                                                     {number.phoneNumber}
-                                                </TableCell>
-                                                <TableCell className="py-4">
-                                                    {number.provider === "sip" ? (
-                                                        <div className="flex flex-col gap-0.5">
-                                                            <Badge variant="outline" className="w-fit text-[9px] font-bold uppercase bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20">
-                                                                SIP Trunk
-                                                            </Badge>
-                                                            {number.sipTrunkId && (
-                                                                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                                                    <Server className="h-2.5 w-2.5" />
-                                                                    {typeof number.sipTrunkId === "object"
-                                                                        ? number.sipTrunkId.name
-                                                                        : "Linked"}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    ) : (
-                                                        <Badge variant="outline" className="text-[9px] font-bold uppercase bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20">
-                                                            Twilio
-                                                        </Badge>
-                                                    )}
                                                 </TableCell>
                                                 <TableCell className="py-4">
                                                     {number.inboundAgentId ? (
@@ -298,28 +206,10 @@ export default function PhoneNumbersPage() {
                                                             <div className="bg-primary/10 p-1.5 rounded-lg">
                                                                 <User className="h-3.5 w-3.5 text-primary" />
                                                             </div>
-                                                            <div>
-                                                                <span className="font-medium">
-                                                                    {typeof number.inboundAgentId === "object"
-                                                                        ? number.inboundAgentId.name
-                                                                        : "Assigned"}
-                                                                </span>
-                                                                {number.fallbackNumber && (
-                                                                    <p className="text-[9px] text-muted-foreground">
-                                                                        Fallback: {number.fallbackNumber}
-                                                                    </p>
-                                                                )}
-                                                            </div>
+                                                            <span className="font-medium">{number.inboundAgentId.name}</span>
                                                         </div>
                                                     ) : (
-                                                        <div>
-                                                            <span className="text-muted-foreground text-xs italic">No Agent Assigned</span>
-                                                            {number.fallbackNumber && (
-                                                                <p className="text-[9px] text-muted-foreground">
-                                                                    → Forwards to {number.fallbackNumber}
-                                                                </p>
-                                                            )}
-                                                        </div>
+                                                        <span className="text-slate-400 text-xs italic">No Agent Assigned</span>
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="py-4">
@@ -366,72 +256,20 @@ export default function PhoneNumbersPage() {
                     </CardContent>
                 </Card>
 
-                {/* Info Boxes — show relevant ones */}
-                <div className="space-y-4">
-                    {/* Twilio info (always show unless user only has SIP numbers) */}
-                    {(!hasSipNumbers || hasTwilioNumbers) && (
-                        <div className="bg-muted/40 p-6 rounded-2xl border border-dashed border-border">
-                            <div className="flex items-start gap-4">
-                                <div className="bg-muted p-3 rounded-xl border border-border shrink-0">
-                                    <Phone className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                                </div>
-                                <div className="space-y-2">
-                                    <h3 className="font-bold text-foreground">Twilio Inbound Calling</h3>
-                                    <p className="text-sm text-muted-foreground leading-relaxed">
-                                        To receive inbound calls via Twilio, point your Twilio phone number's <strong className="text-foreground">&quot;A Call Comes In&quot;</strong> webhook to:
-                                        <code className="block mt-2 p-3 bg-muted border border-border rounded-lg font-mono text-xs text-primary">
-                                            {API_BASE_URL.replace('/api', '')}/twilio/voice
-                                        </code>
-                                        Once pointed, any call to your number will automatically be handled by the assigned Inbound Agent.
-                                    </p>
-                                </div>
-                            </div>
+                <div className="mt-12 bg-slate-50/80 p-6 rounded-2xl border border-dashed border-slate-200">
+                    <div className="flex items-start gap-4">
+                        <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-100 shrink-0">
+                            <Info className="h-6 w-6 text-primary" />
                         </div>
-                    )}
-
-                    {/* SIP info (show when there are SIP numbers or none yet to educate) */}
-                    <div className="bg-muted/40 p-6 rounded-2xl border border-dashed border-border">
-                        <div className="flex items-start gap-4">
-                            <div className="bg-muted p-3 rounded-xl border border-border shrink-0">
-                                <Server className="h-6 w-6 text-violet-600 dark:text-violet-400" />
-                            </div>
-                            <div className="space-y-2">
-                                <h3 className="font-bold text-foreground">SIP Trunk Calling</h3>
-                                <p className="text-sm text-muted-foreground leading-relaxed">
-                                    For local numbers (e.g. Saudi +966), create a <strong className="text-foreground">SIP Trunk</strong> first with your carrier's credentials,
-                                    then add a phone number here and select <strong className="text-foreground">&quot;SIP Trunk&quot;</strong> as the provider.
-                                    Calls will be routed through Asterisk, no Twilio needed.
-                                </p>
-                                {sipOriginationUri && (
-                                    <div className="mt-3 space-y-1.5">
-                                        <p className="text-sm text-muted-foreground">
-                                            To receive <strong className="text-foreground">inbound calls</strong> on SIP trunk numbers, set this as the <strong className="text-foreground">Origination URI</strong> in your provider's dashboard:
-                                        </p>
-                                        <div className="flex items-center gap-2">
-                                            <code className="flex-1 p-3 bg-muted border border-border rounded-lg font-mono text-xs text-primary">
-                                                {sipOriginationUri}
-                                            </code>
-                                            <Button
-                                                variant="outline"
-                                                size="icon"
-                                                className="h-9 w-9 shrink-0"
-                                                onClick={() => {
-                                                    navigator.clipboard.writeText(sipOriginationUri);
-                                                    toast.success("Origination URI copied!");
-                                                }}
-                                            >
-                                                <Copy className="h-3.5 w-3.5" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                )}
-                                <Button variant="outline" size="sm" asChild className="mt-1">
-                                    <Link href="/sip-trunks">
-                                        <Server className="mr-2 h-3.5 w-3.5" />
-                                        Manage SIP Trunks
-                                    </Link>
-                                </Button>
-                            </div>
+                        <div className="space-y-2">
+                            <h3 className="font-bold text-slate-900">How Inbound Calling Works</h3>
+                            <p className="text-sm text-slate-500 leading-relaxed">
+                                To receive inbound calls, you must point your Twilio phone number's <strong>"A Call Comes In"</strong> webhook to:
+                                <code className="block mt-2 p-3 bg-white border rounded-lg font-mono text-xs text-primary">
+                                    {API_BASE_URL.replace('/api', '')}/twilio/voice
+                                </code>
+                                Once pointed, any call to your number will automatically be handled by the Inbound Agent you assigned in the table above.
+                            </p>
                         </div>
                     </div>
                 </div>

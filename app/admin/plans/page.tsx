@@ -31,7 +31,6 @@ import { Badge } from "@/components/ui/badge";
 import axios from "axios";
 import { toast } from "sonner";
 import { AdminNav } from "@/components/admin/nav";
-import { getCurrencySymbol } from "@/lib/currency-symbols";
 
 import {
     Dialog,
@@ -77,14 +76,6 @@ export default function AdminPlansPage() {
         }
     });
     const [currency, setCurrency] = useState("$");
-    const [trialLimits, setTrialLimits] = useState({
-        agents: 1,
-        campaigns: 1,
-        leads: 10,
-        callsPerMonth: 5
-    });
-    const [isTrialModalOpen, setIsTrialModalOpen] = useState(false);
-    const [isSavingTrial, setIsSavingTrial] = useState(false);
 
     const fetchPlans = async () => {
         try {
@@ -104,11 +95,8 @@ export default function AdminPlansPage() {
             }
 
             if (settingsRes.data?.status === "success" && settingsRes.data.data.settings) {
-                const settings = settingsRes.data.data.settings;
-                setCurrency(getCurrencySymbol(settings.currency));
-                if (settings.trialLimits) {
-                    setTrialLimits(settings.trialLimits);
-                }
+                const symbolMap: any = { "USD": "$", "EUR": "€", "GBP": "£", "INR": "₹", "AUD": "$", "ZAR": "R" };
+                setCurrency(symbolMap[settingsRes.data.data.settings.currency] || "$");
             }
         } catch (err: any) {
             toast.error("Failed to load plans or settings");
@@ -149,14 +137,7 @@ export default function AdminPlansPage() {
                 interval: plan.interval,
                 isActive: plan.isActive,
                 dodoProductId: plan.dodoProductId || "",
-                limits: {
-                    agents: plan.limits?.agents ?? 1,
-                    campaigns: plan.limits?.campaigns ?? 1,
-                    leads: plan.limits?.leads ?? 100,
-                    callsPerMonth: typeof plan.limits?.callsPerMonth === "number"
-                        ? plan.limits.callsPerMonth
-                        : 100
-                }
+                limits: { ...plan.limits }
             });
         } else {
             resetForm();
@@ -188,28 +169,6 @@ export default function AdminPlansPage() {
             toast.error(err.response?.data?.message || "Failed to save plan");
         } finally {
             setIsSaving(false);
-        }
-    };
-
-    const handleSaveTrial = async () => {
-        try {
-            setIsSavingTrial(true);
-            const token = localStorage.getItem("token");
-            const response = await axios.post(`${API_BASE_URL}/admin/settings`, {
-                trialLimits
-            }, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (response.data?.status === "success") {
-                toast.success("Trial limits updated");
-                setIsTrialModalOpen(false);
-                fetchPlans();
-            }
-        } catch (err: any) {
-            toast.error(err.response?.data?.message || "Failed to update trial limits");
-        } finally {
-            setIsSavingTrial(false);
         }
     };
 
@@ -251,59 +210,6 @@ export default function AdminPlansPage() {
                 </div>
             ) : (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {/* Trial / No Plan Card */}
-                    <Card className="rounded-2xl border-primary/20 bg-primary/5 shadow-sm hover:shadow-md transition-shadow">
-                        <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <div className="p-2 bg-primary/10 rounded-xl">
-                                    <ShieldCheck className="h-5 w-5 text-primary" />
-                                </div>
-                                <Badge className="bg-primary/20 text-primary border-primary/20">System Default</Badge>
-                            </div>
-                            <div className="pt-4">
-                                <CardTitle className="text-xl font-bold text-primary">Trial / No Plan Limits</CardTitle>
-                                <CardDescription className="line-clamp-2 mt-1">Limits for users without an active subscription.</CardDescription>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-baseline gap-1">
-                                <span className="text-3xl font-bold">{currency}0</span>
-                                <span className="text-muted-foreground text-sm">/trial</span>
-                            </div>
-
-                            <div className="space-y-2 pt-2">
-                                <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground/60">Global Limits</div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
-                                        <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                                        {trialLimits.agents} Agents
-                                    </div>
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
-                                        <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                                        {trialLimits.campaigns} Campaigns
-                                    </div>
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
-                                        <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                                        {trialLimits.leads} Leads
-                                    </div>
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
-                                        <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                                        {trialLimits.callsPerMonth > 0 ? `${trialLimits.callsPerMonth} Calls/mo` : "Unlimited Calls"}
-                                    </div>
-                                </div>
-                            </div>
-                        </CardContent>
-                        <CardFooter className="border-t border-primary/10 pt-6">
-                            <Button
-                                onClick={() => setIsTrialModalOpen(true)}
-                                variant="ghost"
-                                className="w-full text-primary hover:text-primary hover:bg-primary/10 font-bold"
-                            >
-                                <Settings className="mr-2 h-4 w-4" /> Configure Trial Limits
-                            </Button>
-                        </CardFooter>
-                    </Card>
-
                     {plans.map((plan) => (
                         <Card key={plan._id} className="rounded-2xl border-border shadow-sm hover:shadow-md transition-shadow">
                             <CardHeader>
@@ -345,9 +251,7 @@ export default function AdminPlansPage() {
                                         </div>
                                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                             <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                                            {plan.limits.callsPerMonth === -1
-                                                ? "Unlimited Calls"
-                                                : `${plan.limits.callsPerMonth} Calls/mo`}
+                                            {plan.limits.callsPerMonth} Calls/mo
                                         </div>
                                     </div>
                                 </div>
@@ -464,30 +368,6 @@ export default function AdminPlansPage() {
                         {/* Limits */}
                         <div className="pt-3 border-t space-y-3">
                             <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Resource Limits</h3>
-
-                            <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50/70 dark:bg-muted/40 border">
-                                <div className="space-y-0.5">
-                                    <Label className="text-xs font-semibold">Unlimited Calls</Label>
-                                    <p className="text-[10px] text-muted-foreground">
-                                        When enabled, this plan ignores the monthly call limit.
-                                    </p>
-                                </div>
-                                <Switch
-                                    checked={formData.limits.callsPerMonth === -1}
-                                    onCheckedChange={(checked) => {
-                                        setFormData((prev) => ({
-                                            ...prev,
-                                            limits: {
-                                                ...prev.limits,
-                                                callsPerMonth: checked
-                                                    ? -1
-                                                    : (prev.limits.callsPerMonth === -1 ? 100 : prev.limits.callsPerMonth || 100)
-                                            }
-                                        }));
-                                    }}
-                                />
-                            </div>
-
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1.5">
                                     <Label className="text-xs">Agents</Label>
@@ -525,24 +405,18 @@ export default function AdminPlansPage() {
                                         className="rounded-xl h-10"
                                     />
                                 </div>
-                                {formData.limits.callsPerMonth !== -1 && (
-                                    <div className="space-y-1.5">
-                                        <Label className="text-xs">Calls/Mo</Label>
-                                        <Input
-                                            type="number"
-                                            value={formData.limits.callsPerMonth}
-                                            placeholder="e.g. 500"
-                                            onChange={(e) => setFormData({
-                                                ...formData,
-                                                limits: {
-                                                    ...formData.limits,
-                                                    callsPerMonth: parseInt(e.target.value, 10) || 0
-                                                }
-                                            })}
-                                            className="rounded-xl h-10"
-                                        />
-                                    </div>
-                                )}
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs">Calls/Mo</Label>
+                                    <Input
+                                        type="number"
+                                        value={formData.limits.callsPerMonth}
+                                        onChange={(e) => setFormData({
+                                            ...formData,
+                                            limits: { ...formData.limits, callsPerMonth: parseInt(e.target.value) }
+                                        })}
+                                        className="rounded-xl h-10"
+                                    />
+                                </div>
                             </div>
                         </div>
 
@@ -575,81 +449,6 @@ export default function AdminPlansPage() {
                         >
                             {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             {editingPlan ? "Save Changes" : "Create Plan"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* Trial Limits Modal */}
-            <Dialog open={isTrialModalOpen} onOpenChange={setIsTrialModalOpen}>
-                <DialogContent className="max-w-md rounded-3xl p-6 border-none shadow-2xl">
-                    <DialogHeader className="mb-4">
-                        <DialogTitle className="text-2xl font-bold font-sora">
-                            Trial Plan Limits
-                        </DialogTitle>
-                        <DialogDescription>
-                            Configure the default resource limits for users who haven't subscribed to a plan yet.
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <div className="grid grid-cols-1 gap-4 py-2">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="trial-agents">Max Agents</Label>
-                                <Input
-                                    id="trial-agents"
-                                    type="number"
-                                    value={trialLimits.agents}
-                                    onChange={(e) => setTrialLimits({ ...trialLimits, agents: parseInt(e.target.value) })}
-                                    className="rounded-xl h-11"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="trial-campaigns">Max Campaigns</Label>
-                                <Input
-                                    id="trial-campaigns"
-                                    type="number"
-                                    value={trialLimits.campaigns}
-                                    onChange={(e) => setTrialLimits({ ...trialLimits, campaigns: parseInt(e.target.value) })}
-                                    className="rounded-xl h-11"
-                                />
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="trial-leads">Max Leads</Label>
-                                <Input
-                                    id="trial-leads"
-                                    type="number"
-                                    value={trialLimits.leads}
-                                    onChange={(e) => setTrialLimits({ ...trialLimits, leads: parseInt(e.target.value) })}
-                                    className="rounded-xl h-11"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="trial-calls">Max Calls/Mo</Label>
-                                <Input
-                                    id="trial-calls"
-                                    type="number"
-                                    value={trialLimits.callsPerMonth}
-                                    onChange={(e) => setTrialLimits({ ...trialLimits, callsPerMonth: parseInt(e.target.value) })}
-                                    className="rounded-xl h-11"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <DialogFooter className="mt-6 pt-4 border-t">
-                        <Button variant="ghost" onClick={() => setIsTrialModalOpen(false)} className="rounded-xl px-6">
-                            Cancel
-                        </Button>
-                        <Button
-                            onClick={handleSaveTrial}
-                            disabled={isSavingTrial}
-                            className="rounded-xl px-8 shadow-lg shadow-primary/20"
-                        >
-                            {isSavingTrial && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Update Limits
                         </Button>
                     </DialogFooter>
                 </DialogContent>
