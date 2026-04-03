@@ -24,6 +24,7 @@ import {
     Phone,
     Server,
     Zap,
+    Copy,
 } from "lucide-react";
 import {
     DropdownMenu,
@@ -53,6 +54,7 @@ export default function PhoneNumbersPage() {
         isDeepgramConfigured: true,
         isModelConfigured: true
     });
+    const [sipOriginationUri, setSipOriginationUri] = useState('');
 
     const fetchNumbers = useCallback(async () => {
         try {
@@ -70,13 +72,14 @@ export default function PhoneNumbersPage() {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (configRes.data?.status === "success") {
-                const { isTwilioConfigured, isElevenLabsConfigured, isDeepgramConfigured, isModelConfigured } = configRes.data.data;
+                const { isTwilioConfigured, isElevenLabsConfigured, isDeepgramConfigured, isModelConfigured, sipOriginationUri } = configRes.data.data;
                 setIsTwilioConfigured(isTwilioConfigured);
                 setConfigStatus({
                     isElevenLabsConfigured,
                     isDeepgramConfigured,
                     isModelConfigured
                 });
+                if (sipOriginationUri) setSipOriginationUri(sipOriginationUri);
             }
         } catch (err: any) {
             console.error("Failed to fetch data:", err);
@@ -399,6 +402,29 @@ export default function PhoneNumbersPage() {
                                     then add a phone number here and select <strong className="text-foreground">&quot;SIP Trunk&quot;</strong> as the provider.
                                     Calls will be routed through Asterisk, no Twilio needed.
                                 </p>
+                                {sipOriginationUri && (
+                                    <div className="mt-3 space-y-1.5">
+                                        <p className="text-sm text-muted-foreground">
+                                            To receive <strong className="text-foreground">inbound calls</strong> on SIP trunk numbers, set this as the <strong className="text-foreground">Origination URI</strong> in your provider's dashboard:
+                                        </p>
+                                        <div className="flex items-center gap-2">
+                                            <code className="flex-1 p-3 bg-muted border border-border rounded-lg font-mono text-xs text-primary">
+                                                {sipOriginationUri}
+                                            </code>
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                className="h-9 w-9 shrink-0"
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(sipOriginationUri);
+                                                    toast.success("Origination URI copied!");
+                                                }}
+                                            >
+                                                <Copy className="h-3.5 w-3.5" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
                                 <Button variant="outline" size="sm" asChild className="mt-1">
                                     <Link href="/sip-trunks">
                                         <Server className="mr-2 h-3.5 w-3.5" />

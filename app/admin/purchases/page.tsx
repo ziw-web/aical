@@ -31,6 +31,7 @@ import { AdminNav } from "@/components/admin/nav";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { toast } from "sonner";
+import { getCurrencySymbol } from "@/lib/currency-symbols";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
@@ -145,11 +146,7 @@ export default function AdminPurchasesPage() {
                                             <Badge variant="secondary" className="bg-muted text-muted-foreground border-border">{purchase.plan?.name}</Badge>
                                         </TableCell>
                                         <TableCell className="font-bold text-foreground">
-                                            {(() => {
-                                                const symbolMap: any = { "USD": "$", "EUR": "€", "GBP": "£", "INR": "₹", "AUD": "$", "ZAR": "R" };
-                                                const symbol = symbolMap[purchase.currency] || "$";
-                                                return `${symbol}${purchase.amount}`;
-                                            })()}
+                                            {`${getCurrencySymbol(purchase.currency)}${purchase.amount}`}
                                         </TableCell>
                                         <TableCell>
                                             <span className="capitalize text-sm font-medium">{purchase.paymentGateway}</span>

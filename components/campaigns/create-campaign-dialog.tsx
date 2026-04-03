@@ -46,6 +46,17 @@ interface CreateCampaignDialogProps {
     onSuccess?: () => void;
 }
 
+function getCreateCampaignErrorMessage(err: unknown): string {
+    const fallback = "Failed to create campaign";
+    if (!err || typeof err !== "object") return fallback;
+    const ax = err as { response?: { data?: { message?: unknown } } };
+    const raw = ax.response?.data?.message;
+    const msg = typeof raw === "string" ? raw.trim() : "";
+    if (!msg) return fallback;
+    if (/agent\s*id/i.test(msg)) return "Please select an agent";
+    return msg;
+}
+
 export function CreateCampaignDialog({ onSuccess }: CreateCampaignDialogProps) {
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -136,6 +147,10 @@ export function CreateCampaignDialog({ onSuccess }: CreateCampaignDialogProps) {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!formData.agentId?.trim()) {
+            toast.error("Please select an agent");
+            return;
+        }
         if (formData.selectedLeads.length === 0) {
             toast.error("Please select at least one lead");
             return;
@@ -165,8 +180,8 @@ export function CreateCampaignDialog({ onSuccess }: CreateCampaignDialogProps) {
             if (response.data?.data?.campaign?._id) {
                 router.push(`/campaigns/${response.data.data.campaign._id}`);
             }
-        } catch (err: any) {
-            toast.error(err.response?.data?.message || "Failed to create campaign");
+        } catch (err: unknown) {
+            toast.error(getCreateCampaignErrorMessage(err));
         } finally {
             setLoading(false);
         }

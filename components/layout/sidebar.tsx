@@ -16,6 +16,8 @@ import {
     Server,
     X,
     HeadphonesIcon,
+    Database,
+    Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -49,6 +51,11 @@ const mainMenuItems = [
         icon: Bot,
     },
     {
+        title: "Knowledge Base",
+        href: "/knowledge-base",
+        icon: Database,
+    },
+    {
         title: "Campaigns",
         href: "/campaigns",
         icon: Megaphone,
@@ -57,6 +64,11 @@ const mainMenuItems = [
         title: "Call Logs",
         href: "/call-logs",
         icon: Phone,
+    },
+    {
+        title: "Appointments",
+        href: "/appointments",
+        icon: Calendar,
     },
     {
         title: "Support",
@@ -84,7 +96,7 @@ interface SidebarProps {
     onClose?: () => void;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.aical.in/api";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
     const pathname = usePathname();
@@ -157,10 +169,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 isOpen ? "translate-x-0" : "-translate-x-full"
             )}>
                 <div className="flex h-16 items-center justify-between border-b px-6">
-                    <Link href="/dashboard" className="flex items-center" onClick={onClose}>
-                        <span style={{ fontSize: "27px" }}>
-							ai<span style={{ color: "#8078f0e6" }}>cal</span>
-						</span>
+                    <Link href="/" className="flex items-center" onClick={onClose}>
+                        <Logo width={160} height={45} />
                     </Link>
                     <Button variant="ghost" size="icon" className="lg:hidden" onClick={onClose}>
                         <X className="h-5 w-5" />

@@ -20,12 +20,13 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import axios from "axios";
-import { Loader2, Clock, Phone, Lock, Server, Activity, Settings, ShoppingBag, Key, Webhook, ChevronDown } from "lucide-react";
+import { Loader2, Clock, Globe, Phone, Lock, Server, Activity, Settings, ShoppingBag, Key, Webhook, ChevronDown, Mail } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { useSettings } from "@/components/settings-provider";
+import { getCurrencySymbol } from "@/lib/currency-symbols";
 import {
     Dialog,
     DialogContent,
@@ -52,10 +53,51 @@ import {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
+// Common IANA timezones for appointment and display (user can set any valid IANA string via API)
+const COMMON_TIMEZONES = [
+    "UTC",
+    "America/New_York",
+    "America/Chicago",
+    "America/Denver",
+    "America/Los_Angeles",
+    "America/Toronto",
+    "America/Vancouver",
+    "America/Phoenix",
+    "America/Anchorage",
+    "America/Halifax",
+    "America/St_Johns",
+    "Europe/London",
+    "Europe/Paris",
+    "Europe/Berlin",
+    "Europe/Amsterdam",
+    "Europe/Brussels",
+    "Europe/Madrid",
+    "Europe/Rome",
+    "Europe/Moscow",
+    "Europe/Istanbul",
+    "Asia/Dubai",
+    "Asia/Kolkata",
+    "Asia/Karachi",
+    "Asia/Dhaka",
+    "Asia/Singapore",
+    "Asia/Hong_Kong",
+    "Asia/Shanghai",
+    "Asia/Tokyo",
+    "Asia/Seoul",
+    "Australia/Sydney",
+    "Australia/Melbourne",
+    "Australia/Perth",
+    "Pacific/Auckland",
+    "Pacific/Fiji",
+    "Africa/Johannesburg",
+    "Africa/Cairo",
+    "Africa/Lagos",
+];
+
 function SettingsPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { refreshSettings } = useSettings();
+    const { refreshSettings, branding } = useSettings();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [user, setUser] = useState<any>(null);
@@ -98,7 +140,46 @@ function SettingsPageContent() {
         recordingEnabled: true,
         autoAnalysisEnabled: false,
         timeFormat: "12",
+        timeZone: "UTC",
+        autoHangupEnabled: false,
+        incomingHangupLimit: 10,
+        outgoingHangupLimit: 10,
     });
+
+    const [verifyingElevenLabs, setVerifyingElevenLabs] = useState(false);
+    const [elevenLabsKeyError, setElevenLabsKeyError] = useState<string | null>(null);
+
+    const verifyElevenLabsKey = async (key: string) => {
+        if (!key) {
+            setElevenLabsKeyError(null);
+            return;
+        }
+        try {
+            setVerifyingElevenLabs(true);
+            const token = localStorage.getItem("token");
+            await axios.post(`${API_BASE_URL}/settings/elevenlabs/verify`, {
+                elevenLabsKey: key
+            }, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            setElevenLabsKeyError(null);
+        } catch (err: any) {
+            setElevenLabsKeyError(err.response?.data?.message || "Incorrect API Key");
+        } finally {
+            setVerifyingElevenLabs(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!apiKeys.elevenLabsKey) {
+            setElevenLabsKeyError(null);
+            return;
+        }
+        const timeoutId = setTimeout(() => {
+            verifyElevenLabsKey(apiKeys.elevenLabsKey);
+        }, 800);
+        return () => clearTimeout(timeoutId);
+    }, [apiKeys.elevenLabsKey]);
 
     const [webhookSettings, setWebhookSettings] = useState({
         url: "",
@@ -111,6 +192,26 @@ function SettingsPageContent() {
             leadCreated: true,
             leadQualified: true,
             campaignCompleted: true,
+            appointmentBooked: true,
+            appointmentCanceled: true
+        }
+    });
+
+    const [emailSettings, setEmailSettings] = useState({
+        enabled: false,
+        brevoKey: "",
+        senderEmail: "",
+        senderName: "",
+        recipientEmail: "",
+        events: {
+            inboundCall: true,
+            outboundCall: true,
+            callCompleted: true,
+            leadCreated: true,
+            leadQualified: true,
+            campaignCompleted: true,
+            appointmentBooked: true,
+            appointmentCanceled: true
         }
     });
 
@@ -143,6 +244,10 @@ function SettingsPageContent() {
                         recordingEnabled: settings.recordingEnabled ?? true,
                         autoAnalysisEnabled: settings.autoAnalysisEnabled ?? false,
                         timeFormat: settings.timeFormat || "12",
+                        timeZone: settings.timeZone || "UTC",
+                        autoHangupEnabled: settings.autoHangupEnabled ?? false,
+                        incomingHangupLimit: settings.incomingHangupLimit ?? 10,
+                        outgoingHangupLimit: settings.outgoingHangupLimit ?? 10,
                     });
                     if (settings.webhooks) {
                         setWebhookSettings({
@@ -156,6 +261,27 @@ function SettingsPageContent() {
                                 leadCreated: settings.webhooks.events?.leadCreated ?? true,
                                 leadQualified: settings.webhooks.events?.leadQualified ?? true,
                                 campaignCompleted: settings.webhooks.events?.campaignCompleted ?? true,
+                                appointmentBooked: settings.webhooks.events?.appointmentBooked ?? true,
+                                appointmentCanceled: settings.webhooks.events?.appointmentCanceled ?? true,
+                            }
+                        });
+                    }
+                    if (settings.emailNotifications) {
+                        setEmailSettings({
+                            enabled: settings.emailNotifications.enabled || false,
+                            brevoKey: settings.emailNotifications.brevoKey || "",
+                            senderEmail: settings.emailNotifications.senderEmail || "",
+                            senderName: settings.emailNotifications.senderName || "",
+                            recipientEmail: settings.emailNotifications.recipientEmail || "",
+                            events: {
+                                inboundCall: settings.emailNotifications.events?.inboundCall ?? true,
+                                outboundCall: settings.emailNotifications.events?.outboundCall ?? true,
+                                callCompleted: settings.emailNotifications.events?.callCompleted ?? true,
+                                leadCreated: settings.emailNotifications.events?.leadCreated ?? true,
+                                leadQualified: settings.emailNotifications.events?.leadQualified ?? true,
+                                campaignCompleted: settings.emailNotifications.events?.campaignCompleted ?? true,
+                                appointmentBooked: settings.emailNotifications.events?.appointmentBooked ?? true,
+                                appointmentCanceled: settings.emailNotifications.events?.appointmentCanceled ?? true,
                             }
                         });
                     }
@@ -175,8 +301,7 @@ function SettingsPageContent() {
             const publicSettingsRes = await axios.get(`${API_BASE_URL}/settings/public`);
             if (publicSettingsRes.data?.status === "success") {
                 const { currency: cur, gateways: g } = publicSettingsRes.data.data;
-                const symbolMap: any = { "USD": "$", "EUR": "€", "GBP": "£", "INR": "₹", "AUD": "$", "ZAR": "R" };
-                setCurrency(symbolMap[cur] || "$");
+                setCurrency(getCurrencySymbol(cur));
                 setCurrencyCode(cur || "USD");
                 setEnabledGateways(g);
             }
@@ -290,7 +415,8 @@ function SettingsPageContent() {
             const response = await axios.post(`${API_BASE_URL}/settings`, {
                 ...apiKeys,
                 ...systemSettings,
-                webhooks: webhookSettings
+                webhooks: webhookSettings,
+                emailNotifications: emailSettings
             }, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -364,7 +490,7 @@ function SettingsPageContent() {
                         key: enabledGateways.razorpayKeyId,
                         amount: order.amount,
                         currency: order.currency,
-                        name: "aical AI",
+                        name: branding.appName,
                         description: `Upgrade to ${selectedPlan.name}`,
                         order_id: order.id,
                         handler: async (response: any) => {
@@ -450,6 +576,24 @@ function SettingsPageContent() {
         }
     };
 
+    const handleSendTestEmail = async (eventName: string, label: string) => {
+        try {
+            toast.loading(`Sending ${label} test email...`, { id: "test-email" });
+            const token = localStorage.getItem("token");
+            const response = await axios.post(`${API_BASE_URL}/settings/email/test`, {
+                event: eventName
+            }, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (response.data?.status === "success") {
+                toast.success(`${label} email dispatched successfully!`, { id: "test-email" });
+            }
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || `Failed to dispatch ${label} email.`, { id: "test-email" });
+        }
+    };
+
     const handleRegenerateSecret = async () => {
         try {
             toast.loading("Regenerating secret...", { id: "regen-secret" });
@@ -505,6 +649,13 @@ function SettingsPageContent() {
                     >
                         <Webhook className="h-4 w-4" />
                         <span className="text-sm">Webhooks</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                        value="email"
+                        className="flex-none flex items-center gap-2 px-6 py-2 rounded-none transition-all duration-200 shrink-0 data-[state=active]:text-primary data-[state=active]:font-bold data-[state=active]:bg-primary/5 border-b-2 border-transparent data-[state=active]:border-primary text-muted-foreground hover:text-foreground hover:bg-muted shadow-none bg-transparent !border-x-0 !border-t-0 !shadow-none after:hidden"
+                    >
+                        <Mail className="h-4 w-4" />
+                        <span className="text-sm">Email</span>
                     </TabsTrigger>
                     <TabsTrigger
                         value="billing"
@@ -576,7 +727,15 @@ function SettingsPageContent() {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="elevenlabs-key" className="text-xs font-bold uppercase text-muted-foreground">ElevenLabs API Key</Label>
+                                        <div className="flex items-center justify-between">
+                                            <Label htmlFor="elevenlabs-key" className="text-xs font-bold uppercase text-muted-foreground">ElevenLabs API Key</Label>
+                                            {verifyingElevenLabs && (
+                                                <div className="flex items-center gap-1 text-[10px] text-primary animate-pulse font-bold">
+                                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                                    Verifying...
+                                                </div>
+                                            )}
+                                        </div>
                                         <Input
                                             id="elevenlabs-key"
                                             type="password"
@@ -585,8 +744,18 @@ function SettingsPageContent() {
                                                 setApiKeys({ ...apiKeys, elevenLabsKey: e.target.value })
                                             }
                                             placeholder="••••••••••••••••••••••••••••••••"
-                                            className="font-mono text-sm"
+                                            className={`font-mono text-sm ${elevenLabsKeyError ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                                         />
+                                        {elevenLabsKeyError && (
+                                            <p className="text-[10px] text-destructive font-bold animate-in fade-in slide-in-from-top-1">
+                                                {elevenLabsKeyError}. Please check your key.
+                                            </p>
+                                        )}
+                                        {!elevenLabsKeyError && !verifyingElevenLabs && apiKeys.elevenLabsKey && (
+                                            <p className="text-[10px] text-emerald-500 font-bold flex items-center gap-1">
+                                                <Check className="h-3 w-3" /> Valid API Key
+                                            </p>
+                                        )}
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="deepgram-key" className="text-xs font-bold uppercase text-muted-foreground">Deepgram API Key</Label>
@@ -673,6 +842,8 @@ function SettingsPageContent() {
                                         { id: 'leadCreated', label: 'Lead Created', desc: 'Sent when a new lead is added' },
                                         { id: 'leadQualified', label: 'Lead Qualified', desc: 'Sent when AI qualifies a lead' },
                                         { id: 'campaignCompleted', label: 'Campaign Finished', desc: 'Sent when a campaign ends' },
+                                        { id: 'appointmentBooked', label: 'Appointment Booked', desc: 'Sent when a new appointment is scheduled' },
+                                        { id: 'appointmentCanceled', label: 'Appointment Canceled', desc: 'Sent when an appointment is canceled' },
                                     ].map((event) => (
                                         <div key={event.id} className="flex items-start space-x-3 p-3 rounded-lg border bg-card/50 hover:bg-muted/10 transition-colors">
                                             <Switch
@@ -726,6 +897,152 @@ function SettingsPageContent() {
                                         <DropdownMenuItem className="cursor-pointer" onClick={() => handleSendTestEvent('campaignCompleted', 'Campaign Finished')}>
                                             Campaign Finished
                                         </DropdownMenuItem>
+                                        <DropdownMenuItem className="cursor-pointer" onClick={() => handleSendTestEvent('appointmentBooked', 'Appointment Booked')}>
+                                            Appointment Booked
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem className="cursor-pointer" onClick={() => handleSendTestEvent('appointmentCanceled', 'Appointment Canceled')}>
+                                            Appointment Canceled
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="email">
+                    <Card className="max-w-3xl">
+                        <CardHeader>
+                            <CardTitle>Email Notifications</CardTitle>
+                            <CardDescription>
+                                Receive real-time alerts for appointments and call events via email using Brevo.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="flex items-center justify-between rounded-xl border p-4 bg-muted/20 max-w-2xl">
+                                <div className="space-y-1">
+                                    <Label className="text-sm font-bold uppercase tracking-wider">Enable Email Notifications</Label>
+                                    <p className="text-xs text-muted-foreground">Toggle to start receiving emails for selected events.</p>
+                                </div>
+                                <Switch
+                                    checked={emailSettings.enabled}
+                                    onCheckedChange={(checked) => setEmailSettings({ ...emailSettings, enabled: checked })}
+                                />
+                            </div>
+
+                            <div className="grid gap-6 md:grid-cols-2 max-w-2xl mt-6">
+                                <div className="space-y-2">
+                                    <Label htmlFor="brevo-key" className="text-xs font-bold uppercase text-muted-foreground/80">Brevo API Key</Label>
+                                    <Input
+                                        id="brevo-key"
+                                        type="password"
+                                        placeholder="xkeysib-..."
+                                        value={emailSettings.brevoKey}
+                                        onChange={(e) => setEmailSettings({ ...emailSettings, brevoKey: e.target.value })}
+                                        className="font-mono text-sm h-11"
+                                    />
+                                    <p className="text-[11px] text-muted-foreground">Get your API key from Brevo SMTP & API settings.</p>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="recipient-email" className="text-xs font-bold uppercase text-muted-foreground/80">Recipient Email</Label>
+                                    <Input
+                                        id="recipient-email"
+                                        type="email"
+                                        placeholder="you@example.com"
+                                        value={emailSettings.recipientEmail}
+                                        onChange={(e) => setEmailSettings({ ...emailSettings, recipientEmail: e.target.value })}
+                                        className="text-sm h-11"
+                                    />
+                                    <p className="text-[11px] text-muted-foreground">Address where notifications will be sent.</p>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="sender-name" className="text-xs font-bold uppercase text-muted-foreground/80">Sender Name</Label>
+                                    <Input
+                                        id="sender-name"
+                                        placeholder={branding.appName}
+                                        value={emailSettings.senderName}
+                                        onChange={(e) => setEmailSettings({ ...emailSettings, senderName: e.target.value })}
+                                        className="text-sm h-11"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="sender-email" className="text-xs font-bold uppercase text-muted-foreground/80">Sender Email</Label>
+                                    <Input
+                                        id="sender-email"
+                                        placeholder="notifications@yourdomain.com"
+                                        value={emailSettings.senderEmail}
+                                        onChange={(e) => setEmailSettings({ ...emailSettings, senderEmail: e.target.value })}
+                                        className="text-sm h-11"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="pt-4 border-t max-w-2xl">
+                                <Label className="text-sm font-bold uppercase tracking-wider mb-4 block">Notification Events</Label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                                    {[
+                                        { id: 'appointmentBooked', label: 'Appointment Booked', desc: 'Sent when a new appointment is scheduled' },
+                                        { id: 'appointmentCanceled', label: 'Appointment Canceled', desc: 'Sent when an appointment is canceled' },
+                                        { id: 'leadCreated', label: 'Lead Created', desc: 'Sent when a new lead is added' },
+                                        { id: 'leadQualified', label: 'Lead Qualified', desc: 'Sent when AI qualifies a lead' },
+                                        { id: 'inboundCall', label: 'Inbound Call Received', desc: 'Sent when an inbound call starts' },
+                                        { id: 'callCompleted', label: 'Call Completed', desc: 'Sent when any call finishes' },
+                                    ].map((event) => (
+                                        <div key={event.id} className="flex items-start space-x-3 p-3 rounded-lg border bg-card/50 hover:bg-muted/10 transition-colors">
+                                            <Switch
+                                                id={`email-event-${event.id}`}
+                                                className="mt-1"
+                                                checked={(emailSettings.events as any)[event.id]}
+                                                onCheckedChange={(checked) => {
+                                                    setEmailSettings({
+                                                        ...emailSettings,
+                                                        events: { ...emailSettings.events, [event.id]: checked }
+                                                    });
+                                                }}
+                                            />
+                                            <div className="grid gap-0.5 pointer-events-none">
+                                                <Label htmlFor={`email-event-${event.id}`} className="text-sm font-semibold">{event.label}</Label>
+                                                <p className="text-[11px] text-muted-foreground leading-tight">{event.desc}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="pt-6 flex gap-3">
+                                <Button onClick={() => handleSaveSettings()} disabled={saving}>
+                                    {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Save Email Configuration
+                                </Button>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline">
+                                            Send Test Email
+                                            <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="start" className="w-[200px] rounded-xl">
+                                        <DropdownMenuItem className="cursor-pointer" onClick={() => handleSendTestEmail('appointmentBooked', 'Appointment Booked')}>
+                                            Appointment Booked
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem className="cursor-pointer" onClick={() => handleSendTestEmail('appointmentCanceled', 'Appointment Canceled')}>
+                                            Appointment Canceled
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem className="cursor-pointer" onClick={() => handleSendTestEmail('leadCreated', 'Lead Created')}>
+                                            Lead Created
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem className="cursor-pointer" onClick={() => handleSendTestEmail('leadQualified', 'Lead Qualified')}>
+                                            Lead Qualified
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem className="cursor-pointer" onClick={() => handleSendTestEmail('inboundCall', 'Inbound Call Received')}>
+                                            Inbound Call Received
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem className="cursor-pointer" onClick={() => handleSendTestEmail('callCompleted', 'Call Completed')}>
+                                            Call Completed
+                                        </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </div>
@@ -737,18 +1054,38 @@ function SettingsPageContent() {
                     <div className="grid gap-6">
                         <Card className="rounded-2xl border-slate-100 shadow-sm">
                             <CardHeader>
-                                <div className="flex items-center justify-between">
+                                <div className="flex flex-wrap items-start justify-between gap-4">
                                     <div className="space-y-1">
                                         <CardTitle className="text-xl font-bold">Your Current Plan</CardTitle>
                                         <CardDescription>Manage your subscription and view usage limits.</CardDescription>
+                                        <div className="flex flex-wrap items-center gap-4 pt-2 text-sm">
+                                            {user?.planStatus != null && (
+                                                <span className="text-slate-600 dark:text-slate-400">
+                                                    <span className="font-medium text-slate-500 dark:text-slate-500">Status:</span>{" "}
+                                                    <span className="capitalize font-medium">{user.planStatus}</span>
+                                                </span>
+                                            )}
+                                            {user?.planExpiry && (() => {
+                                                const expiryDate = new Date(user.planExpiry);
+                                                const isExpired = expiryDate < new Date();
+                                                return (
+                                                    <span className="text-slate-600 dark:text-slate-400">
+                                                        <span className="font-medium text-slate-500 dark:text-slate-500">
+                                                            {isExpired ? "Expired on:" : "Expires:"}
+                                                        </span>{" "}
+                                                        {expiryDate.toLocaleDateString(undefined, { dateStyle: "medium" })}
+                                                    </span>
+                                                );
+                                            })()}
+                                        </div>
                                     </div>
-                                    <Badge className="px-4 py-1 text-sm bg-primary/10 text-primary border-primary/20 hover:bg-primary/10">
-                                        {user?.plan?.name || "Free Trial"}
+                                    <Badge className={`px-4 py-1 text-sm bg-primary/10 text-primary border-primary/20 hover:bg-primary/10 ${usage?.isTrial ? 'animate-pulse bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/10' : ''}`}>
+                                        {user?.plan?.name || "Trial Plan"}
                                     </Badge>
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                <div className="grid md:grid-cols-3 gap-4">
+                                <div className={`grid gap-4 ${usage?.isTrial ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
                                     <div className="p-4 rounded-xl border bg-slate-50/50 dark:bg-muted/30 space-y-2">
                                         <div className="flex justify-between items-center text-xs font-bold uppercase text-slate-400 dark:text-slate-500">
                                             <span>Agents</span>
@@ -785,6 +1122,30 @@ function SettingsPageContent() {
                                             />
                                         </div>
                                     </div>
+                                    {usage?.isTrial && (
+                                        <div className="p-4 rounded-xl border bg-slate-50/50 dark:bg-muted/30 space-y-2">
+                                            <div className="flex justify-between items-center text-xs font-bold uppercase text-slate-400 dark:text-slate-500">
+                                                <span>Calls</span>
+                                                <span className="text-slate-900 dark:text-slate-100">
+                                                    {usage?.usage?.calls ?? 0}
+                                                    {" / "}
+                                                    {usage?.limits?.callsPerMonth === -1
+                                                        ? "Unlimited"
+                                                        : usage?.limits?.callsPerMonth ?? 0}
+                                                </span>
+                                            </div>
+                                            <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-amber-500"
+                                                    style={{
+                                                        width: usage?.limits?.callsPerMonth && usage.limits.callsPerMonth > 0
+                                                            ? `${Math.min(100, ((usage?.usage?.calls ?? 0) / Math.max(1, usage.limits.callsPerMonth)) * 100)}%`
+                                                            : "0%"
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </CardContent>
                         </Card>
@@ -826,7 +1187,9 @@ function SettingsPageContent() {
                                                 </div>
                                                 <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                                                     <Check className="h-4 w-4 text-green-500 shrink-0" />
-                                                    Unlimited Calls (BYOK)
+                                                    {plan.limits.callsPerMonth === -1
+                                                        ? "Unlimited Calls (BYOK)"
+                                                        : `${plan.limits.callsPerMonth} Calls/mo`}
                                                 </div>
                                             </div>
                                         </CardContent>
@@ -961,6 +1324,38 @@ function SettingsPageContent() {
                                         </SelectContent>
                                     </Select>
                                 </div>
+                                <div className="flex items-center justify-between rounded-xl border p-4 bg-muted/20 max-w-2xl">
+                                    <div className="space-y-0.5">
+                                        <Label htmlFor="time-zone" className="text-sm font-bold uppercase">Time Zone</Label>
+                                        <p className="text-xs text-muted-foreground">
+                                            Time zone for appointments and availability (e.g. America/New_York).
+                                        </p>
+                                    </div>
+                                    <Select
+                                        value={systemSettings.timeZone || "UTC"}
+                                        onValueChange={(val) => {
+                                            setSystemSettings({ ...systemSettings, timeZone: val });
+                                        }}
+                                    >
+                                        <SelectTrigger className="w-[220px]">
+                                            <SelectValue placeholder="Select time zone" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {(() => {
+                                                const current = systemSettings.timeZone || "UTC";
+                                                const list = COMMON_TIMEZONES.includes(current) ? COMMON_TIMEZONES : [current, ...COMMON_TIMEZONES];
+                                                return list.map((tz) => (
+                                                    <SelectItem key={tz} value={tz}>
+                                                        <div className="flex items-center gap-2">
+                                                            <Globe className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                            <span>{tz.replace(/_/g, " ")}</span>
+                                                        </div>
+                                                    </SelectItem>
+                                                ));
+                                            })()}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                                 <div className="space-y-4">
                                     <div className="flex items-center gap-2">
                                         <Phone className="h-4 w-4 text-primary" />
@@ -996,6 +1391,77 @@ function SettingsPageContent() {
                                                     setSystemSettings({ ...systemSettings, autoAnalysisEnabled: checked });
                                                 }}
                                             />
+                                        </div>
+
+                                        <div className="flex flex-col space-y-4 rounded-xl border p-4 bg-muted/20 max-w-2xl">
+                                            <div className="flex items-center justify-between">
+                                                <div className="space-y-0.5">
+                                                    <div className="flex items-center gap-2">
+                                                        <Label htmlFor="auto-hangup" className="text-sm font-bold uppercase">Auto Hangup</Label>
+                                                        {systemSettings.autoHangupEnabled && (systemSettings.incomingHangupLimit === 0 || systemSettings.outgoingHangupLimit === 0) && (
+                                                            <Badge variant="destructive" className="text-[10px] h-4 px-1.5 uppercase">Immediate Hangup</Badge>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Automatically terminate call sessions after a set duration.
+                                                    </p>
+                                                </div>
+                                                <Switch
+                                                    id="auto-hangup"
+                                                    checked={systemSettings.autoHangupEnabled}
+                                                    onCheckedChange={(checked) => {
+                                                        setSystemSettings({ ...systemSettings, autoHangupEnabled: checked });
+                                                    }}
+                                                />
+                                            </div>
+
+                                            {systemSettings.autoHangupEnabled && (
+                                                <div className="flex flex-col gap-4 pt-2 border-t border-border/50 animate-in fade-in slide-in-from-top-1">
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div className="space-y-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <Label htmlFor="incoming-limit" className="text-[10px] font-bold uppercase text-muted-foreground">Incoming Timeout</Label>
+                                                                {systemSettings.incomingHangupLimit === 0 && (
+                                                                    <Badge variant="destructive" className="text-[8px] h-3 px-1.5 uppercase">Immediate</Badge>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <Input
+                                                                    id="incoming-limit"
+                                                                    type="number"
+                                                                    min="0"
+                                                                    className="w-24 h-9"
+                                                                    value={systemSettings.incomingHangupLimit}
+                                                                    onChange={(e) => setSystemSettings({ ...systemSettings, incomingHangupLimit: parseInt(e.target.value) || 0 })}
+                                                                />
+                                                                <span className="text-sm text-muted-foreground">min</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <Label htmlFor="outgoing-limit" className="text-[10px] font-bold uppercase text-muted-foreground">Outgoing Timeout</Label>
+                                                                {systemSettings.outgoingHangupLimit === 0 && (
+                                                                    <Badge variant="destructive" className="text-[8px] h-3 px-1.5 uppercase">Immediate</Badge>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <Input
+                                                                    id="outgoing-limit"
+                                                                    type="number"
+                                                                    min="0"
+                                                                    className="w-24 h-9"
+                                                                    value={systemSettings.outgoingHangupLimit}
+                                                                    onChange={(e) => setSystemSettings({ ...systemSettings, outgoingHangupLimit: parseInt(e.target.value) || 0 })}
+                                                                />
+                                                                <span className="text-sm text-muted-foreground">min</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-[10px] text-muted-foreground italic">
+                                                        Calls exceeding their respective duration will be terminated automatically.
+                                                    </p>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

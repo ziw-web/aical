@@ -168,13 +168,12 @@ export default function AdminSupportPage() {
     const filteredTickets = tickets;
 
     return (
-        <div className="flex flex-col gap-6">
-            <div className="flex flex-col gap-1">
+        <div className="space-y-6">
+            <div>
                 <h2 className="text-3xl font-bold tracking-tight">Support tickets</h2>
                 <p className="text-muted-foreground">View and respond to user support requests.</p>
             </div>
             <AdminNav currentPath="/admin/support" />
-
             <div className="flex items-center gap-4 flex-wrap">
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger className="w-[160px]">

@@ -41,10 +41,12 @@ import { toast } from "sonner";
 import axios from "axios";
 import { SipTrunkDialog } from "@/components/sip-trunks/sip-trunk-dialog";
 import { cn } from "@/lib/utils";
+import { useSettings } from "@/components/settings-provider";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
 export default function SipTrunksPage() {
+    const { branding } = useSettings();
     const [trunks, setTrunks] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -382,7 +384,7 @@ export default function SipTrunksPage() {
                         <div className="space-y-2">
                             <h3 className="font-bold text-foreground">How SIP Trunks Work</h3>
                             <p className="text-sm text-muted-foreground leading-relaxed">
-                                A SIP trunk connects IntelliCall to your telecom provider (e.g. STC, Mobily, Zain in Saudi Arabia, or global providers like Telnyx and Bandwidth).
+                                A SIP trunk connects {branding.appName} to your telecom provider (e.g. STC, Mobily, Zain in Saudi Arabia, or global providers like Telnyx and Bandwidth).
                                 Once configured, assign it to a phone number on the <strong className="text-foreground">Phone Numbers</strong> page,
                                 then your AI agents will place and receive calls through the trunk, no Twilio required.
                             </p>
