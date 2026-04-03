@@ -18,12 +18,18 @@ import {
     Youtube,
     PhoneIncoming,
     PhoneOutgoing,
-    Mic
+    Mic,
+    Menu,
+    X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/ui/logo";
+import { ModeToggle } from "@/components/mode-toggle";
+import { Footer } from "@/components/layout/footer";
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { useSettings } from "@/components/settings-provider";
+import { getCurrencySymbol } from "@/lib/currency-symbols";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
@@ -32,6 +38,9 @@ export default function LandingPage() {
     const [plans, setPlans] = useState<any[]>([]);
     const [currencySymbol, setCurrencySymbol] = useState("$");
     const [loadingPlans, setLoadingPlans] = useState(true);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const { branding } = useSettings();
+    const pc = branding.primaryColor;
 
     useEffect(() => {
         const token = localStorage.getItem("token");
@@ -49,8 +58,7 @@ export default function LandingPage() {
                 }
 
                 if (settingsRes.data?.status === "success") {
-                    const symbolMap: any = { "USD": "$", "EUR": "€", "GBP": "£", "INR": "₹", "AUD": "$", "ZAR": "R" };
-                    setCurrencySymbol(symbolMap[settingsRes.data.data.currency] || "$");
+                    setCurrencySymbol(getCurrencySymbol(settingsRes.data.data.currency));
                 }
             } catch (err) {
                 console.error("Failed to fetch landing page data", err);
@@ -63,129 +71,207 @@ export default function LandingPage() {
     }, []);
 
     return (
-        <div className="flex flex-col min-h-screen bg-white text-slate-900 overflow-x-hidden font-sora">
+        <div className="flex flex-col min-h-screen bg-background text-foreground overflow-x-hidden font-sora">
             {/* Navigation */}
-            <header className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md border-b border-slate-100 px-6 py-4">
-                <div className="max-w-7xl mx-auto flex items-center justify-between">
-                    <Logo width={180} height={45} variant="black" />
+            <header className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-md border-b border-border px-4 sm:px-6 py-3 sm:py-4">
+                <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+                    <div className="transform scale-110 sm:scale-100 origin-left">
+                        <Logo width={180} height={45} variant="auto" />
+                    </div>
 
                     <nav className="hidden md:flex items-center gap-8">
-                        <Link href="#features" className="text-sm font-medium hover:text-[#8078F0] transition-colors">Features</Link>
-                        <Link href="#solutions" className="text-sm font-medium hover:text-[#8078F0] transition-colors">Solutions</Link>
-                        <Link href="#pricing" className="text-sm font-medium hover:text-[#8078F0] transition-colors">Pricing</Link>
+                        <Link href="#features" className="text-sm font-medium transition-colors" onMouseEnter={e => (e.currentTarget.style.color = pc)} onMouseLeave={e => (e.currentTarget.style.color = "")}>Features</Link>
+                        <Link href="#solutions" className="text-sm font-medium transition-colors" onMouseEnter={e => (e.currentTarget.style.color = pc)} onMouseLeave={e => (e.currentTarget.style.color = "")}>Solutions</Link>
+                        <Link href="#pricing" className="text-sm font-medium transition-colors" onMouseEnter={e => (e.currentTarget.style.color = pc)} onMouseLeave={e => (e.currentTarget.style.color = "")}>Pricing</Link>
                     </nav>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
                         {isLoggedIn ? (
-                            <Button asChild variant="default" className="rounded-full px-6 bg-[#8078F0] hover:bg-[#8078F0]/90 text-white">
+                            <Button
+                                asChild
+                                variant="default"
+                                className="rounded-full px-4 sm:px-6 h-8 sm:h-9 text-xs sm:text-sm text-white"
+                                style={{ backgroundColor: pc }}
+                            >
                                 <Link href="/dashboard">Dashboard</Link>
                             </Button>
                         ) : (
                             <>
-                                <Link href="/login" className="text-sm font-medium hover:text-[#8078F0] transition-colors px-4 py-2">Login</Link>
-                                <Button asChild variant="default" className="rounded-full px-6 bg-slate-900 hover:bg-slate-800 text-white shadow-lg">
-                                    <Link href="/signup" className="text-white">Get Started <ChevronRight className="ml-2 h-4 w-4" /></Link>
-                                </Button>
+                                {/* Mobile auth controls - only Get Started */}
+                                <div className="flex items-center gap-2 md:hidden">
+                                    <Button
+                                        asChild
+                                        variant="default"
+                                        className="h-8 px-3 text-xs rounded-full bg-slate-900 hover:bg-slate-800 text-white shadow-md"
+                                    >
+                                        <Link href="/signup" className="flex items-center">
+                                            Get Started
+                                            <ChevronRight className="ml-1 h-3 w-3" />
+                                        </Link>
+                                    </Button>
+                                </div>
+
+                                {/* Desktop auth controls */}
+                                <div className="hidden md:flex items-center gap-4">
+                                    <Link
+                                        href="/login"
+                                        className="text-sm font-medium transition-colors px-4 py-2"
+                                        onMouseEnter={e => (e.currentTarget.style.color = pc)}
+                                        onMouseLeave={e => (e.currentTarget.style.color = "")}
+                                    >
+                                        Login
+                                    </Link>
+                                    <Button asChild variant="default" className="rounded-full px-6 bg-slate-900 hover:bg-slate-800 text-white shadow-lg">
+                                        <Link href="/signup" className="text-white">
+                                            Get Started <ChevronRight className="ml-2 h-4 w-4" />
+                                        </Link>
+                                    </Button>
+                                </div>
                             </>
                         )}
+                        <button
+                            type="button"
+                            className="inline-flex items-center justify-center p-2 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-foreground transition-colors md:hidden"
+                            onClick={() => setMobileMenuOpen(prev => !prev)}
+                            aria-label="Toggle navigation menu"
+                        >
+                            {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+                        </button>
+                        <ModeToggle />
                     </div>
                 </div>
+
+                {/* Mobile nav menu */}
+                {mobileMenuOpen && (
+                    <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-sm">
+                        <nav className="max-w-7xl mx-auto px-4 py-3 flex flex-col gap-2">
+                            <Link
+                                href="#features"
+                                className="py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+                                onClick={() => setMobileMenuOpen(false)}
+                            >
+                                Features
+                            </Link>
+                            <Link
+                                href="#solutions"
+                                className="py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+                                onClick={() => setMobileMenuOpen(false)}
+                            >
+                                Solutions
+                            </Link>
+                            <Link
+                                href="#pricing"
+                                className="py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+                                onClick={() => setMobileMenuOpen(false)}
+                            >
+                                Pricing
+                            </Link>
+                            <div className="h-px bg-border my-1" />
+                            <Link
+                                href="/login"
+                                className="py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+                                onClick={() => setMobileMenuOpen(false)}
+                            >
+                                Login
+                            </Link>
+                        </nav>
+                    </div>
+                )}
             </header>
 
             <main className="pt-20">
                 {/* Hero Section */}
                 <section className="relative py-24 md:py-32 px-6 overflow-hidden">
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full -z-10">
-                        <div className="absolute top-0 right-0 w-96 h-96 bg-[#8078F0]/5 rounded-full blur-3xl animate-pulse"></div>
+                        <div className="absolute top-0 right-0 w-96 h-96 rounded-full blur-3xl animate-pulse" style={{ backgroundColor: `${pc}0D` }}></div>
                         <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl animate-pulse delay-700"></div>
                     </div>
 
                     <div className="max-w-4xl mx-auto text-center space-y-8">
-                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-slate-600 text-xs font-semibold uppercase tracking-wider">
+                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-muted border border-border text-muted-foreground text-xs font-semibold uppercase tracking-wider">
                             <span className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#8078F0] opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#8078F0]"></span>
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: pc }}></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: pc }}></span>
                             </span>
                             Introducing Next-Gen AI Calling
                         </div>
 
-                        <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-slate-900 leading-[1.1]">
-                            AI Voice Agents for <span className="text-[#8078F0] italic">Inbound & Outbound</span> Calls
+                        <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-foreground leading-[1.1]">
+                            AI Voice Agents for <span className="italic" style={{ color: pc }}>Inbound & Outbound</span> Calls
                         </h1>
 
-                        <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">
+                        <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
                             Empower your business with AI agents that handle calls 24/7 – whether it's outbound campaigns or answering inbound inquiries with human-like intelligence.
                         </p>
 
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
                             {!isLoggedIn ? (
-                                <Button size="lg" className="rounded-full px-10 h-14 text-base font-semibold bg-[#8078F0] hover:bg-[#8078F0]/90 text-white shadow-xl hover:shadow-[#8078F0]/20 transition-all scale-100 hover:scale-105" asChild>
+                                <Button size="lg" className="rounded-full px-10 h-14 text-base font-semibold text-white shadow-xl transition-all scale-100 hover:scale-105" style={{ backgroundColor: pc }} asChild>
                                     <Link href="/signup" className="text-white">Start Free Trial <ArrowRight className="ml-2 h-5 w-5" /></Link>
                                 </Button>
                             ) : (
-                                <Button size="lg" className="rounded-full px-10 h-14 text-base font-semibold bg-[#8078F0] hover:bg-[#8078F0]/90 text-white shadow-xl hover:shadow-[#8078F0]/20 transition-all scale-100 hover:scale-105" asChild>
+                                <Button size="lg" className="rounded-full px-10 h-14 text-base font-semibold text-white shadow-xl transition-all scale-100 hover:scale-105" style={{ backgroundColor: pc }} asChild>
                                     <Link href="/dashboard" className="text-white">Back to Dashboard <ArrowRight className="ml-2 h-5 w-5" /></Link>
                                 </Button>
                             )}
-                            <Button size="lg" variant="outline" className="rounded-full px-10 h-14 text-base font-semibold border-slate-200 hover:bg-slate-50" asChild>
+                            <Button size="lg" variant="outline" className="rounded-full px-10 h-14 text-base font-semibold border-border hover:bg-muted" asChild>
                                 <Link href="#features">See How It Works</Link>
                             </Button>
                         </div>
 
-                        <div className="flex items-center justify-center gap-8 pt-12 text-slate-400 grayscale opacity-70">
-                            {/* Logos of companies or just generic text */}
+                        <div className="flex items-center justify-center gap-8 pt-12 text-muted-foreground/40 grayscale opacity-70">
                             <span className="text-sm font-semibold tracking-widest uppercase italic font-mono">TRUSTED BY INNOVATORS</span>
                         </div>
                     </div>
                 </section>
 
                 {/* Features Grid */}
-                <section id="features" className="py-24 px-6 bg-slate-50">
+                <section id="features" className="py-24 px-6 bg-muted/30">
                     <div className="max-w-7xl mx-auto space-y-16">
                         <div className="text-center space-y-4">
-                            <h2 className="text-3xl md:text-5xl font-bold text-slate-900">Complete AI Calling Solution</h2>
-                            <p className="text-slate-600 max-w-2xl mx-auto">Handle inbound inquiries, automate outbound campaigns, and let AI qualify your leads – all from one powerful platform.</p>
+                            <h2 className="text-3xl md:text-5xl font-bold text-foreground">Complete AI Calling Solution</h2>
+                            <p className="text-muted-foreground max-w-2xl mx-auto">Handle inbound inquiries, automate outbound campaigns, and let AI qualify your leads – all from one powerful platform.</p>
                         </div>
 
                         <div className="grid md:grid-cols-3 gap-8">
                             {[
                                 {
-                                    icon: <PhoneOutgoing className="h-8 w-8 text-[#8078F0]" />,
+                                    icon: <PhoneOutgoing className="h-8 w-8" style={{ color: pc }} />,
                                     title: "Outbound Campaigns",
                                     desc: "Launch thousands of AI-powered calls in minutes. Scale your outreach without scaling your team."
                                 },
                                 {
-                                    icon: <PhoneIncoming className="h-8 w-8 text-[#8078F0]" />,
+                                    icon: <PhoneIncoming className="h-8 w-8" style={{ color: pc }} />,
                                     title: "Inbound Call Handling",
                                     desc: "Let AI answer incoming calls 24/7. Perfect for support, sales inquiries, and lead capture."
                                 },
                                 {
-                                    icon: <BarChart3 className="h-8 w-8 text-[#8078F0]" />,
+                                    icon: <BarChart3 className="h-8 w-8" style={{ color: pc }} />,
                                     title: "AI Lead Scoring",
                                     desc: "Automatic qualification and scoring after every call. Know your hot leads instantly."
                                 },
                                 {
-                                    icon: <Mic className="h-8 w-8 text-[#8078F0]" />,
+                                    icon: <Mic className="h-8 w-8" style={{ color: pc }} />,
                                     title: "Call Recording & Transcripts",
                                     desc: "Full recordings with word-for-word transcripts. Never miss a detail from any conversation."
                                 },
                                 {
-                                    icon: <Bot className="h-8 w-8 text-[#8078F0]" />,
+                                    icon: <Bot className="h-8 w-8" style={{ color: pc }} />,
                                     title: "Neural AI Voices",
                                     desc: "Hyper-realistic voices powered by ElevenLabs. Handles objections and follows complex logic naturally."
                                 },
                                 {
-                                    icon: <Users className="h-8 w-8 text-[#8078F0]" />,
+                                    icon: <Users className="h-8 w-8" style={{ color: pc }} />,
                                     title: "Lead & Campaign Management",
                                     desc: "Import leads via CSV, organize with tags, and manage campaigns all from one dashboard."
                                 }
                             ].map((feature, i) => (
-                                <div key={i} className="group p-8 bg-white rounded-3xl border border-slate-100 hover:border-[#8078F0]/20 hover:shadow-2xl transition-all duration-300">
-                                    <div className="p-3 bg-[#8078F0]/5 rounded-2xl w-fit mb-6 group-hover:scale-110 transition-transform">
+                                <div key={i} className="group p-8 bg-card rounded-3xl border border-border hover:shadow-2xl transition-all duration-300" style={{ ["--hover-border" as any]: `${pc}4D` }}>
+                                    <div className="p-3 rounded-2xl w-fit mb-6 group-hover:scale-110 transition-transform" style={{ backgroundColor: `${pc}15` }}>
                                         {feature.icon}
                                     </div>
-                                    <h3 className="text-xl font-bold text-slate-900 mb-3">{feature.title}</h3>
-                                    <p className="text-slate-600 leading-relaxed">{feature.desc}</p>
+                                    <h3 className="text-xl font-bold text-foreground mb-3">{feature.title}</h3>
+                                    <p className="text-muted-foreground leading-relaxed">{feature.desc}</p>
                                 </div>
                             ))}
                         </div>
@@ -196,56 +282,60 @@ export default function LandingPage() {
                 <section id="pricing" className="py-24 px-6">
                     <div className="max-w-7xl mx-auto space-y-16">
                         <div className="text-center space-y-4">
-                            <h2 className="text-3xl md:text-5xl font-bold text-slate-900">Simple, Transparent Pricing</h2>
-                            <p className="text-slate-600 max-w-2xl mx-auto">Choose the plan that fits your growth. No hidden fees, ever.</p>
+                            <h2 className="text-3xl md:text-5xl font-bold text-foreground">Simple, Transparent Pricing</h2>
+                            <p className="text-muted-foreground max-w-2xl mx-auto">Choose the plan that fits your growth. No hidden fees, ever.</p>
                         </div>
 
                         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
                             {loadingPlans ? (
                                 Array(3).fill(0).map((_, i) => (
-                                    <div key={i} className="p-8 rounded-3xl border border-slate-100 bg-white animate-pulse">
-                                        <div className="h-6 w-24 bg-slate-100 rounded mb-4"></div>
-                                        <div className="h-10 w-32 bg-slate-100 rounded mb-6"></div>
+                                    <div key={i} className="p-8 rounded-3xl border border-border bg-card animate-pulse">
+                                        <div className="h-6 w-24 bg-muted rounded mb-4"></div>
+                                        <div className="h-10 w-32 bg-muted rounded mb-6"></div>
                                         <div className="space-y-3">
-                                            <div className="h-4 w-full bg-slate-50 rounded"></div>
-                                            <div className="h-4 w-full bg-slate-50 rounded"></div>
-                                            <div className="h-4 w-full bg-slate-50 rounded"></div>
+                                            <div className="h-4 w-full bg-muted/50 rounded"></div>
+                                            <div className="h-4 w-full bg-muted/50 rounded"></div>
+                                            <div className="h-4 w-full bg-muted/50 rounded"></div>
                                         </div>
                                     </div>
                                 ))
                             ) : plans.length > 0 ? (
                                 plans.map((plan, i) => (
-                                    <div key={i} className={`relative p-8 rounded-3xl border-2 ${i === 1 ? 'border-[#8078F0] bg-[#8078F0]/[0.02] shadow-xl' : 'border-slate-100 bg-white'}`}>
+                                    <div key={i} className={`relative p-8 rounded-3xl border-2 ${i === 1 ? 'shadow-xl' : 'border-border bg-card'}`} style={i === 1 ? { borderColor: pc, backgroundColor: `${pc}0D` } : {}}>
                                         {i === 1 && (
-                                            <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-[#8078F0] text-white text-xs font-bold rounded-full uppercase">
+                                            <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 text-white text-xs font-bold rounded-full uppercase" style={{ backgroundColor: pc }}>
                                                 Most Popular
                                             </div>
                                         )}
                                         <div className="space-y-6">
                                             <div>
-                                                <h3 className="text-xl font-bold text-slate-900">{plan.name}</h3>
+                                                <h3 className="text-xl font-bold text-foreground">{plan.name}</h3>
                                                 <div className="mt-4 flex items-baseline gap-1">
-                                                    <span className="text-4xl font-bold text-slate-900">{currencySymbol}{plan.price}</span>
-                                                    <span className="text-slate-500 text-sm">/{plan.interval}</span>
+                                                    <span className="text-4xl font-bold text-foreground">{currencySymbol}{plan.price}</span>
+                                                    <span className="text-muted-foreground text-sm">/{plan.interval}</span>
                                                 </div>
                                             </div>
 
                                             <div className="space-y-4">
                                                 <div className="flex items-center gap-3">
-                                                    <CheckCircle2 className="h-5 w-5 text-[#8078F0] shrink-0" />
-                                                    <span className="text-slate-600 text-sm">{plan.limits?.agents || 0} AI Agents</span>
+                                                    <CheckCircle2 className="h-5 w-5 shrink-0" style={{ color: pc }} />
+                                                    <span className="text-muted-foreground text-sm">{plan.limits?.agents || 0} AI Agents</span>
                                                 </div>
                                                 <div className="flex items-center gap-3">
-                                                    <CheckCircle2 className="h-5 w-5 text-[#8078F0] shrink-0" />
-                                                    <span className="text-slate-600 text-sm">{plan.limits?.campaigns || 0} Active Campaigns</span>
+                                                    <CheckCircle2 className="h-5 w-5 shrink-0" style={{ color: pc }} />
+                                                    <span className="text-muted-foreground text-sm">{plan.limits?.campaigns || 0} Active Campaigns</span>
                                                 </div>
                                                 <div className="flex items-center gap-3">
-                                                    <CheckCircle2 className="h-5 w-5 text-[#8078F0] shrink-0" />
-                                                    <span className="text-slate-600 text-sm">{plan.limits?.leads || 0} Lead Capacity</span>
+                                                    <CheckCircle2 className="h-5 w-5 shrink-0" style={{ color: pc }} />
+                                                    <span className="text-muted-foreground text-sm">{plan.limits?.leads || 0} Lead Capacity</span>
                                                 </div>
                                                 <div className="flex items-center gap-3">
-                                                    <CheckCircle2 className="h-5 w-5 text-[#8078F0] shrink-0" />
-                                                    <span className="text-slate-600 text-sm">Unlimited Calls (BYOK)</span>
+                                                    <CheckCircle2 className="h-5 w-5 shrink-0" style={{ color: pc }} />
+                                                    <span className="text-muted-foreground text-sm">
+                                                        {plan.limits?.callsPerMonth === -1
+                                                            ? "Unlimited Calls (BYOK)"
+                                                            : `${plan.limits?.callsPerMonth ?? 0} Calls/mo`}
+                                                    </span>
                                                 </div>
                                                 {plan.description && (
                                                     <p className="text-xs text-muted-foreground pt-2 italic">{plan.description}</p>
@@ -254,7 +344,8 @@ export default function LandingPage() {
 
                                             <Button
                                                 asChild
-                                                className={`w-full rounded-full h-12 font-bold ${i === 1 ? 'bg-[#8078F0] hover:bg-[#8078F0]/90 text-white' : 'bg-slate-900 hover:bg-slate-800 text-white'}`}
+                                                className={`w-full rounded-full h-12 font-bold ${i === 1 ? 'text-white' : 'bg-primary hover:bg-primary/90 text-primary-foreground'}`}
+                                                style={i === 1 ? { backgroundColor: pc } : {}}
                                             >
                                                 <Link href={isLoggedIn ? "/settings?tab=billing" : "/signup"}>
                                                     Get Started
@@ -304,7 +395,7 @@ export default function LandingPage() {
                             ].map((testimonial, i) => (
                                 <div key={i} className="p-8 bg-white/5 rounded-3xl border border-white/10 backdrop-blur-sm">
                                     <div className="flex gap-1 mb-6">
-                                        {[1, 2, 3, 4, 5].map(s => <Star key={s} className="h-4 w-4 fill-[#8078F0] text-[#8078F0]" />)}
+                                        {[1, 2, 3, 4, 5].map(s => <Star key={s} className="h-4 w-4" style={{ fill: pc, color: pc }} />)}
                                     </div>
                                     <p className="text-lg italic text-slate-200 mb-6 font-medium">"{testimonial.quote}"</p>
                                     <div>
@@ -319,42 +410,7 @@ export default function LandingPage() {
             </main>
 
             {/* Footer */}
-            <footer className="bg-white border-t border-slate-100 py-16 px-6">
-                <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-12">
-                    <div className="col-span-2 space-y-6">
-                        <Logo width={180} height={45} />
-                        <p className="text-slate-500 max-w-sm">
-                            Revolutionizing business communications with intelligent, automated calling solutions that scale with your growth.
-                        </p>
-                    </div>
-                    <div className="space-y-4">
-                        <h4 className="font-bold text-slate-900 uppercase text-xs tracking-widest">Company</h4>
-                        <nav className="flex flex-col gap-2">
-                            <Link href="/about" className="text-slate-500 hover:text-[#8078F0] text-sm transition-colors">About Us</Link>
-                            <Link href="/contact" className="text-slate-500 hover:text-[#8078F0] text-sm transition-colors">Contact</Link>
-                            <Link href="/privacy" className="text-slate-500 hover:text-[#8078F0] text-sm transition-colors">Privacy Policy</Link>
-                            <Link href="/terms" className="text-slate-500 hover:text-[#8078F0] text-sm transition-colors">Terms of Service</Link>
-                        </nav>
-                    </div>
-                    <div className="space-y-4">
-                        <h4 className="font-bold text-slate-900 uppercase text-xs tracking-widest">Connect</h4>
-                        <div className="flex gap-4">
-                            <Button size="icon" variant="ghost" className="rounded-full bg-slate-50 hover:bg-[#8078F0]/10 hover:text-[#8078F0] transition-all">
-                                <Instagram className="h-5 w-5" />
-                            </Button>
-                            <Button size="icon" variant="ghost" className="rounded-full bg-slate-50 hover:bg-[#8078F0]/10 hover:text-[#8078F0] transition-all">
-                                <Linkedin className="h-5 w-5" />
-                            </Button>
-                            <Button size="icon" variant="ghost" className="rounded-full bg-slate-50 hover:bg-[#8078F0]/10 hover:text-[#8078F0] transition-all">
-                                <Youtube className="h-5 w-5" />
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-                <div className="max-w-7xl mx-auto border-t border-slate-100 mt-16 pt-8 text-center text-slate-400 text-sm font-medium">
-                    © {new Date().getFullYear()} IntelliCall AI. All rights reserved.
-                </div>
-            </footer>
+            <Footer />
         </div>
     );
 }

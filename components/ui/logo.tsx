@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { useSettings } from "@/components/settings-provider";
 
 interface LogoProps {
     className?: string;
@@ -11,15 +12,18 @@ interface LogoProps {
 }
 
 export function Logo({ className, width = 140, height = 40, variant = "auto" }: LogoProps) {
+    const { branding, resolveBrandingUrl } = useSettings();
+    const lightSrc = resolveBrandingUrl(branding.logoLight);
+    const darkSrc = resolveBrandingUrl(branding.logoDark);
+
     if (variant === "black") {
         return (
             <div className={cn("relative", className)}>
-                <Image
-                    src="/images/logo_black.png"
-                    alt="IntelliCall AI Logo"
+                <img
+                    src={lightSrc}
+                    alt={`${branding.appName} Logo`}
                     width={width}
                     height={height}
-                    priority
                 />
             </div>
         );
@@ -28,12 +32,11 @@ export function Logo({ className, width = 140, height = 40, variant = "auto" }: 
     if (variant === "white") {
         return (
             <div className={cn("relative", className)}>
-                <Image
-                    src="/images/logo_white.png"
-                    alt="IntelliCall AI Logo"
+                <img
+                    src={darkSrc}
+                    alt={`${branding.appName} Logo`}
                     width={width}
                     height={height}
-                    priority
                 />
             </div>
         );
@@ -41,21 +44,19 @@ export function Logo({ className, width = 140, height = 40, variant = "auto" }: 
 
     return (
         <div className={cn("relative", className)}>
-            <Image
-                src="/images/logo_black.png"
-                alt="IntelliCall AI Logo"
+            <img
+                src={lightSrc}
+                alt={`${branding.appName} Logo`}
                 width={width}
                 height={height}
                 className="dark:hidden block"
-                priority
             />
-            <Image
-                src="/images/logo_white.png"
-                alt="IntelliCall AI Logo"
+            <img
+                src={darkSrc}
+                alt={`${branding.appName} Logo`}
                 width={width}
                 height={height}
                 className="hidden dark:block"
-                priority
             />
         </div>
     );
