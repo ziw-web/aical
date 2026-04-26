@@ -1,7 +1,7 @@
 "use client";
 
 import { Logo } from "@/components/ui/logo";
-import { SignupForm } from "@/components/auth/signup-form";
+import { SignupForm } from "@/components/auth/signup-form"; 
 
 export default function SignupPage() {
     return (
