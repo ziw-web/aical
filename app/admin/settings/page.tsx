@@ -196,7 +196,7 @@ export default function AdminSettingsPage() {
         currency: "USD",
         supportEmail: "",
         branding: {
-            appName: "IntelliCallAI",
+            appName: "aical",
             primaryColor: "#8078F0",
             logoLight: "/images/logo_black.png",
             logoDark: "/images/logo_white.png",
@@ -238,7 +238,7 @@ export default function AdminSettingsPage() {
                     currency: s.currency || "USD",
                     supportEmail: s.supportEmail || "support@intellicall.ai",
                     branding: {
-                        appName: s.branding?.appName || "IntelliCallAI",
+                        appName: s.branding?.appName || "aical",
                         primaryColor: s.branding?.primaryColor || "#8078F0",
                         logoLight: s.branding?.logoLight || "/images/logo_black.png",
                         logoDark: s.branding?.logoDark || "/images/logo_white.png",
@@ -372,7 +372,7 @@ export default function AdminSettingsPage() {
                                 <Label htmlFor="appName">App Name</Label>
                                 <Input
                                     id="appName"
-                                    placeholder="IntelliCallAI"
+                                    placeholder="aical"
                                     value={settings.branding.appName}
                                     onChange={(e) => updateBranding("appName", e.target.value)}
                                 />

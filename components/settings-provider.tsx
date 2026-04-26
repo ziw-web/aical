@@ -14,7 +14,7 @@ interface BrandingConfig {
 }
 
 const DEFAULT_BRANDING: BrandingConfig = {
-    appName: 'IntelliCallAI',
+    appName: 'aical',
     primaryColor: '#8078F0',
     logoLight: '/images/logo_black.png',
     logoDark: '/images/logo_white.png',

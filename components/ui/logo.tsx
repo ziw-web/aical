@@ -19,12 +19,22 @@ export function Logo({ className, width = 140, height = 40, variant = "auto" }: 
     if (variant === "black") {
         return (
             <div className={cn("relative", className)}>
-                <img
+                {/*<img
                     src={lightSrc}
                     alt={`${branding.appName} Logo`}
                     width={width}
                     height={height}
-                />
+                />*/}
+                <span style={{fontSize: "25px"}}>
+                    <span
+                            style={{
+                                color: "rgb(128, 120, 240)"
+                            }}
+                        >
+                            ai
+                    </span>
+                        cal
+                </span>
             </div>
         );
     }
@@ -32,19 +42,29 @@ export function Logo({ className, width = 140, height = 40, variant = "auto" }: 
     if (variant === "white") {
         return (
             <div className={cn("relative", className)}>
-                <img
+                {/*<img
                     src={darkSrc}
                     alt={`${branding.appName} Logo`}
                     width={width}
                     height={height}
-                />
+                />*/}
+                <span style={{fontSize: "25px"}}>
+                    <span
+                            style={{
+                                color: "rgb(128, 120, 240)"
+                            }}
+                        >
+                            ai
+                    </span>
+                        cal
+                </span>
             </div>
         );
     }
 
     return (
         <div className={cn("relative", className)}>
-            <img
+            {/*<img
                 src={lightSrc}
                 alt={`${branding.appName} Logo`}
                 width={width}
@@ -57,7 +77,17 @@ export function Logo({ className, width = 140, height = 40, variant = "auto" }: 
                 width={width}
                 height={height}
                 className="hidden dark:block"
-            />
+            />*/}
+            <span style={{fontSize: "25px"}}>
+                <span
+                        style={{
+                            color: "rgb(128, 120, 240)"
+                        }}
+                    >
+                        ai
+                </span>
+                    cal
+            </span>
         </div>
     );
 }

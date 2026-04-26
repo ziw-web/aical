@@ -14,7 +14,7 @@ const sora = Sora({
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
 export async function generateMetadata(): Promise<Metadata> {
-  let appName = "IntelliCallAI";
+  let appName = "aical";
   let faviconUrl = "/favicon.ico";
   try {
     const res = await fetch(`${API_BASE_URL}/settings/public`, { cache: 'no-store' });
